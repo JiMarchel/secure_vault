@@ -1,29 +1,46 @@
 use axum::{Json, extract::State};
 use chrono::{Duration, Utc};
+use lettre::{
+    Message, SmtpTransport, Transport,
+    message::{Mailbox, header::ContentType},
+    transport::smtp::authentication::Credentials,
+};
 use rand::{Rng, rng};
-use std::sync::Arc;
+use std::{env, sync::Arc};
 use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
     error::AppError,
-    models::{GenericResponse, RegisterPayload},
+    models::{AppResponse, RegisterPayload, User},
     startup::ApplicationState,
 };
 
 pub async fn sign_up(
     State(app_state): State<Arc<ApplicationState>>,
     Json(payload): Json<RegisterPayload>,
-) -> Result<Json<GenericResponse>, AppError> {
+) -> Result<AppResponse, AppError> {
     payload.validate()?;
 
-    let existing_user: Option<Uuid> = sqlx::query_scalar("SELECT id FROM users WHERE email = $1")
-        .bind(&payload.email)
-        .fetch_optional(&app_state.pool)
-        .await?;
+    let existing_user: Option<User> = sqlx::query_as(
+        "SELECT id, username, email, encrypted_dek, salt, 
+        argon2_params, is_email_verified, created_at FROM users WHERE email = $1",
+    )
+    .bind(&payload.email)
+    .fetch_optional(&app_state.pool)
+    .await?;
 
-    if existing_user.is_some() {
-        return Err(AppError::BadRequest("Email already taken".to_string()));
+    if let Some(ref user) = existing_user {
+        println!("{user:?}");
+        if user.is_email_verified {
+            return Ok(AppResponse::Message(
+                "Email already taken, please login".to_string(),
+            ));
+        } else {
+            return Ok(AppResponse::Redirect(
+                "Email already registered but not verified".to_string(),
+            ));
+        }
     }
 
     let user_id: Uuid =
@@ -43,7 +60,36 @@ pub async fn sign_up(
         .execute(&app_state.pool)
         .await?;
 
-    Ok(Json(GenericResponse {
-        message: "Success created account!".to_string(),
-    }))
+    let email = Message::builder()
+        .from(Mailbox::new(
+            Some("No Reply".to_owned()),
+            "jmarchel100@gmail.com".parse().unwrap(),
+        ))
+        .to(Mailbox::new(
+            Some("Jimmy".to_owned()),
+            "jmarchel200@gmail.com".parse().unwrap(),
+        ))
+        .subject("OTP CODE")
+        .header(ContentType::TEXT_PLAIN)
+        .body(otp_code.to_string())
+        .unwrap();
+
+    let creds = Credentials::new(
+        "jmarchel100@gmail.com".to_string(),
+        env::var("SMTP_PASSWORD").expect("SMTP password not set"),
+    );
+
+    let transporter = SmtpTransport::relay("smtp.gmail.com")
+        .unwrap()
+        .credentials(creds)
+        .build();
+
+    match transporter.send(&email) {
+        Ok(_) => println!("Email sent successfully!"),
+        Err(e) => panic!("Could not send email: {e:?}"),
+    }
+
+    Ok(AppResponse::Redirect(
+        "Last step, please check your email".to_string(),
+    ))
 }
