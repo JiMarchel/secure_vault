@@ -1,4 +1,4 @@
-use axum::{Json, extract::State};
+use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
 use chrono::{Duration, Utc};
 use lettre::{
     Message, SmtpTransport, Transport,
@@ -6,20 +6,40 @@ use lettre::{
     transport::smtp::authentication::Credentials,
 };
 use rand::{Rng, rng};
+use serde::Serialize;
 use std::{env, sync::Arc};
 use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
     error::AppError,
-    models::{AppResponse, RegisterPayload, User},
+    models::{RegisterPayload, User},
     startup::ApplicationState,
 };
+
+#[derive(Serialize)]
+#[serde(tag = "status")]
+pub enum SignUpResponse {
+    #[serde(rename = "pending_verification")]
+    PendingVerification {
+        message: String,
+        id: Uuid,
+    },
+}
+
+impl IntoResponse for SignUpResponse {
+    fn into_response(self) -> axum::response::Response {
+        let status_code = match self {
+            _ => StatusCode::OK,
+        };
+        (status_code, Json(self)).into_response()
+    }
+}
 
 pub async fn sign_up(
     State(app_state): State<Arc<ApplicationState>>,
     Json(payload): Json<RegisterPayload>,
-) -> Result<AppResponse, AppError> {
+) -> Result<SignUpResponse, AppError> {
     payload.validate()?;
 
     let existing_user: Option<User> = sqlx::query_as(
@@ -33,13 +53,19 @@ pub async fn sign_up(
     if let Some(ref user) = existing_user {
         println!("{user:?}");
         if user.is_email_verified {
-            return Ok(AppResponse::Message(
+            return Err(AppError::Conflict(
                 "Email already taken, please login".to_string(),
             ));
+        } else if user.is_email_verified && user.encrypted_dek.is_none() {
+            return Ok(SignUpResponse::PendingVerification {
+                message: "verif_password".to_string(),
+                id: user.id,
+            });
         } else {
-            return Ok(AppResponse::Redirect(
-                "Email already registered but not verified".to_string(),
-            ));
+            return Ok(SignUpResponse::PendingVerification {
+                message: "verif_otp".to_string(),
+                id: user.id,
+            });
         }
     }
 
@@ -53,21 +79,33 @@ pub async fn sign_up(
     let otp_code = format!("{:06}", rng().random_range(1..1_000_000));
     let expires_at = Utc::now() + Duration::minutes(5);
 
-    sqlx::query("INSERT INTO otp_verif (user_id, otp_code, otp_expires_at) VALUES ($1, $2, $3)")
-        .bind(user_id)
-        .bind(&otp_code)
-        .bind(expires_at)
-        .execute(&app_state.pool)
-        .await?;
+    let user_info: RegisterPayload = sqlx::query_as!(
+        RegisterPayload,
+        r#"
+        WITH new_otp AS (
+            INSERT INTO otp_verif (user_id, otp_code, otp_expires_at)
+            VALUES ($1, $2, $3)
+            RETURNING user_id
+        )
+        SELECT u.email as "email!", u.username as "username!"
+        FROM users u
+        JOIN new_otp n ON u.id = n.user_id
+        "#,
+        user_id,
+        &otp_code,
+        expires_at
+    )
+    .fetch_one(&app_state.pool)
+    .await?;
 
     let email = Message::builder()
         .from(Mailbox::new(
             Some("No Reply".to_owned()),
-            "jmarchel100@gmail.com".parse().unwrap(),
+            "no_reply@gmail.com".parse().unwrap(),
         ))
         .to(Mailbox::new(
-            Some("Jimmy".to_owned()),
-            "jmarchel200@gmail.com".parse().unwrap(),
+            Some(user_info.username.clone()),
+            user_info.email.parse().unwrap(),
         ))
         .subject("OTP CODE")
         .header(ContentType::TEXT_PLAIN)
@@ -89,7 +127,8 @@ pub async fn sign_up(
         Err(e) => panic!("Could not send email: {e:?}"),
     }
 
-    Ok(AppResponse::Redirect(
-        "Last step, please check your email".to_string(),
-    ))
+    Ok(SignUpResponse::PendingVerification {
+        message: "created".to_string(),
+        id: user_id,
+    })
 }
