@@ -1,6 +1,6 @@
 use axum::{http::StatusCode, response::IntoResponse};
 use chrono::{DateTime, Utc};
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize};
 use sqlx::prelude::FromRow;
 use uuid::Uuid;
 use validator::Validate;
@@ -8,7 +8,7 @@ use validator::Validate;
 #[derive(Debug, FromRow, Deserialize)]
 pub struct User {
     pub id: Uuid,
-    pub username: Option<String>,
+    pub username: String,
     pub email: String,
     pub encrypted_dek: Option<Vec<u8>>,
     pub salt: Option<Vec<u8>>,
@@ -17,7 +17,7 @@ pub struct User {
     pub created_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Deserialize, Debug, Validate)]
+#[derive(Deserialize, Debug, Validate, FromRow)]
 pub struct RegisterPayload {
     #[validate(length(min = 3))]
     pub username: String,
