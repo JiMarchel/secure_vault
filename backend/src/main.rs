@@ -9,6 +9,7 @@ mod error;
 mod models;
 mod routes;
 mod startup;
+mod helper;
 
 #[tokio::main]
 async fn main() {
