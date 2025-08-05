@@ -12,6 +12,10 @@ pub enum AppError {
     BadRequest(String),
     #[error("Unauthorized")]
     Unauthorized,
+    #[error("Conflict{0}")]
+    Conflict(String),
+    #[error("Forbidden: {0}")]
+    Forbidden(String),
     #[error("Validation Error {0}")]
     ValidationError(#[from] ValidationErrors),
     #[error(transparent)]
@@ -28,6 +32,8 @@ impl IntoResponse for AppError {
             AppError::NotFound => (StatusCode::NOT_FOUND, "Data not found".to_string()),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
             AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized".to_string()),
+            AppError::Conflict(s) => (StatusCode::CONFLICT, s),
+            AppError::Forbidden(s) => (StatusCode::FORBIDDEN, s),
             AppError::ValidationError(e) => {
                 let message = format!("{e}").replace("\n", ", ");
                 (StatusCode::BAD_REQUEST, message)
