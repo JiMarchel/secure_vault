@@ -51,7 +51,6 @@ pub async fn sign_up(
     .await?;
 
     if let Some(ref user) = existing_user {
-        println!("{user:?}");
         if user.is_email_verified {
             return Err(AppError::Conflict(
                 "Email already taken, please login".to_string(),
