@@ -14,25 +14,31 @@ import { Label } from "./ui/label";
 import { Input } from "./ui/input";
 import { useActionState } from "react";
 import { signUpAction } from "@/lib/actions/sign-up";
-import { signUpActionResponse } from "@/lib/types/sign-up";
+import { signUpActionResponse } from "@/lib/types";
+import { usePathname } from "next/navigation";
+import { cn } from "@/lib/utils";
 
 let initialState: signUpActionResponse = {};
 
 export const Navbar = () => {
-  console.log(initialState);
   const [state, formAction, pending] = useActionState(
     signUpAction,
     initialState
   );
+  const pathname = usePathname();
   return (
     <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
-        <div className="flex items-center space-x-2">
+        <Link className="flex items-center space-x-2" href="/">
           <Shield className="h-8 w-8 text-emerald-600" />
           <span className="text-2xl font-bold text-gray-900">SecureVault</span>
-        </div>
+        </Link>
 
-        <div className="flex items-center space-x-3">
+        <div
+          className={cn("flex items-center space-x-3", {
+            hidden: pathname !== "/",
+          })}
+        >
           <Dialog>
             <DialogTrigger asChild>
               <Button variant="ghost" size="sm">
@@ -121,7 +127,9 @@ export const Navbar = () => {
                     {state?.errors?.email}
                   </span>
                 </div>
-                <p className="text-red-500">{state.messageApi ? state.messageApi : null}</p>
+                <p className="text-red-500">
+                  {state.messageApi}
+                </p>
                 <Button type="submit" disabled={pending}>
                   {pending ? "Signing Up..." : "Sign Up"}
                 </Button>
