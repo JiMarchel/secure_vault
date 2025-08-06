@@ -5,11 +5,11 @@ use sqlx::postgres::PgPoolOptions;
 use startup::run;
 use tokio::net::TcpListener;
 
-mod error;
-mod models;
-mod routes;
-mod startup;
-mod helper;
+pub mod error;
+pub mod models;
+pub mod routes;
+pub mod startup;
+pub mod helper;
 
 #[tokio::main]
 async fn main() {
