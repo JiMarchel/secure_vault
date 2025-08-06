@@ -2,7 +2,9 @@
 
 import z from "zod";
 import { signUpSchema } from "../schemas/sign-up";
-import { signUpActionResponse } from "../types/sign-up";
+import { signUpActionResponse } from "../types";
+import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 
 export async function signUpAction(
   _: signUpActionResponse | null,
@@ -23,32 +25,32 @@ export async function signUpAction(
   }
 
   const baseApiUrl = process.env.BASE_API_URL;
-  try {
-    const response = await fetch(`${baseApiUrl}/sign-up`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(validateFields.data),
+  const response = await fetch(`${baseApiUrl}/sign-up`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(validateFields.data),
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    return {
+      messageApi: error.error,
+      inputs: rawData,
+    };
+  }
+
+  const json_res = await response.json();
+  const cookieStore = await cookies();
+
+  if (json_res.message === "verif_otp") {
+    cookieStore.set({
+      name: "sc-verif-otp",
+      value: json_res.id,
+      path: "/",
     });
-
-    if (!response.ok) {
-      const error = await response.json();
-      return {
-        messageApi: error.error,
-        inputs: rawData,
-      };
-    }
-
-    const json_res = await response.json()
-
-    if(json_res.message === "verif_otp"){
-        console.log("di verif otp", json_res)
-    }else if(json_res.message === "verif_password"){
-
-    }else {
-
-    }
-  } catch (error) {
-    console.log(error);
+    redirect("/auth/verif-otp");
+  } else if (json_res.message === "verif_password") {
+  } else {
   }
 
   return {};
