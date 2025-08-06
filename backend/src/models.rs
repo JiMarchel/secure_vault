@@ -5,7 +5,7 @@ use sqlx::prelude::FromRow;
 use uuid::Uuid;
 use validator::Validate;
 
-#[derive(Debug, FromRow, Deserialize)]
+#[derive(FromRow)]
 pub struct User {
     pub id: Uuid,
     pub username: String,
@@ -17,7 +17,8 @@ pub struct User {
     pub created_at: Option<DateTime<Utc>>,
 }
 
-#[derive(Deserialize, Debug, Validate, FromRow)]
+
+#[derive(Deserialize, Validate)]
 pub struct RegisterPayload {
     #[validate(length(min = 3))]
     pub username: String,
@@ -25,7 +26,6 @@ pub struct RegisterPayload {
     pub email: String,
 }
 
-#[derive(Debug)]
 pub enum AppResponse {
     Message(String),
     Created(String),
