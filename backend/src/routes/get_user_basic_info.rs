@@ -7,8 +7,7 @@ use axum::{
 use uuid::Uuid;
 
 use crate::{
-    error::AppError,
-    helper::fetch_user_basic_info::{ UserBasicInfo, fetch_user_basic_info},
+    error::AppError, helper::fetch_user_basic_info::{fetch_user_basic_info, UserBasicInfo}, 
     startup::ApplicationState,
 };
 
