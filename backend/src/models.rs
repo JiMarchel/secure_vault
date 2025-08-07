@@ -1,6 +1,6 @@
-use axum::{http::StatusCode, response::IntoResponse};
+use axum::{Json, http::StatusCode, response::IntoResponse};
 use chrono::{DateTime, Utc};
-use serde::{Deserialize};
+use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 use uuid::Uuid;
 use validator::Validate;
@@ -17,6 +17,12 @@ pub struct User {
     pub created_at: Option<DateTime<Utc>>,
 }
 
+#[derive(Serialize)]
+pub struct OtpVerif {
+    pub user_id: Uuid,
+    pub otp_code: String,
+    pub otp_expires_at: DateTime<Utc>,
+}
 
 #[derive(Deserialize, Validate)]
 pub struct RegisterPayload {
@@ -26,10 +32,18 @@ pub struct RegisterPayload {
     pub email: String,
 }
 
+#[derive(Deserialize, Validate)]
+pub struct VerifOtpPayload {
+    pub id: String,
+    #[validate(length(min = 6, max = 6))]
+    pub otp_code: String,
+}
+
 pub enum AppResponse {
     Message(String),
     Created(String),
     Redirect(String),
+    Updated(String),
 }
 
 impl IntoResponse for AppResponse {
@@ -38,9 +52,26 @@ impl IntoResponse for AppResponse {
             AppResponse::Message(m) => (StatusCode::OK, format!("{m}")),
             AppResponse::Created(m) => (StatusCode::CREATED, format!("{m}")),
             AppResponse::Redirect(m) => (StatusCode::OK, format!("{m}")),
+            AppResponse::Updated(m) => (StatusCode::OK, format!("{m}")),
         };
 
         let body = serde_json::json!({"message": message});
         (status, axum::Json(body)).into_response()
+    }
+}
+
+#[derive(Serialize)]
+#[serde(tag = "status")]
+pub enum SignUpResponse {
+    #[serde(rename = "pending_verification")]
+    PendingVerification { message: String, id: Uuid },
+}
+
+impl IntoResponse for SignUpResponse {
+    fn into_response(self) -> axum::response::Response {
+        let status_code = match self {
+            _ => StatusCode::OK,
+        };
+        (status_code, Json(self)).into_response()
     }
 }
