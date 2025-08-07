@@ -1,19 +1,14 @@
-import { queryOptions } from "@tanstack/react-query";
-
-export default function userBasicInfoQuery(id: string | undefined) {
-  return queryOptions({
-    queryKey: ["user-basic-info", id],
-    queryFn: () => getUserBasicInfo(id),
-    enabled: !!id,
-  });
-}
-
 export const getUserBasicInfo = async (
   id: string | undefined
 ): Promise<UserBasicInfo> => {
   const baseApiUrl = process.env.BASE_API_URL;
 
   const response = await fetch(`${baseApiUrl}/users/basic/${id}`);
+
+  if (!response.ok) {
+    const res = await response.json();
+    throw new Error(`${res.error}, did you try to change the Uuid? please don't do that.&&${response.status} - ${response.statusText}`);
+  }
 
   return response.json();
 };
