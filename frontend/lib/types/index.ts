@@ -3,6 +3,10 @@ export interface SignUpFormData {
   email?: string;
 }
 
+export type MessageApi = {
+  messageApi?: string
+}
+
 export interface signUpActionResponse {
   errors?: {
     [K in keyof SignUpFormData]?: string[];
@@ -12,7 +16,7 @@ export interface signUpActionResponse {
 }
 
 export interface OtpVerifFormData {
-  otp?: string;
+  otp_code?: string;
 }
 
 export interface OtpVerifActionResponse {
