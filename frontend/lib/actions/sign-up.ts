@@ -50,6 +50,12 @@ export async function signUpAction(
     });
     redirect("/auth/verif-otp");
   } else if (json_res.message === "verif_password") {
+    cookieStore.set({
+      name: "sc-verif-password",
+      value: json_res.id,
+      path: "/",
+    });
+    redirect("/auth/verif-password");
   } else {
   }
 
