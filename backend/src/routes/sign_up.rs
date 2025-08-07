@@ -1,4 +1,4 @@
-use axum::{Json, extract::State, http::StatusCode, response::IntoResponse};
+use axum::{Json, extract::State};
 use chrono::{Duration, Utc};
 use lettre::{
     Message, SmtpTransport, Transport,
@@ -6,35 +6,15 @@ use lettre::{
     transport::smtp::authentication::Credentials,
 };
 use rand::{Rng, rng};
-use serde::Serialize;
 use std::{env, sync::Arc};
 use uuid::Uuid;
 use validator::Validate;
 
 use crate::{
     error::AppError,
-    models::{RegisterPayload, User},
+    models::{RegisterPayload, SignUpResponse, User},
     startup::ApplicationState,
 };
-
-#[derive(Serialize)]
-#[serde(tag = "status")]
-pub enum SignUpResponse {
-    #[serde(rename = "pending_verification")]
-    PendingVerification {
-        message: String,
-        id: Uuid,
-    },
-}
-
-impl IntoResponse for SignUpResponse {
-    fn into_response(self) -> axum::response::Response {
-        let status_code = match self {
-            _ => StatusCode::OK,
-        };
-        (status_code, Json(self)).into_response()
-    }
-}
 
 pub async fn sign_up(
     State(app_state): State<Arc<ApplicationState>>,
@@ -51,20 +31,20 @@ pub async fn sign_up(
     .await?;
 
     if let Some(ref user) = existing_user {
-        if user.is_email_verified {
-            return Err(AppError::Conflict(
-                "Email already taken, please login".to_string(),
-            ));
-        } else if user.is_email_verified && user.encrypted_dek.is_none() {
+        if user.is_email_verified && user.encrypted_dek.is_none() {
             return Ok(SignUpResponse::PendingVerification {
                 message: "verif_password".to_string(),
                 id: user.id,
             });
-        } else {
+        } else if !user.is_email_verified {
             return Ok(SignUpResponse::PendingVerification {
                 message: "verif_otp".to_string(),
                 id: user.id,
             });
+        } else {
+            return Err(AppError::Conflict(
+                "Email already taken, please login".to_string(),
+            ));
         }
     }
 
