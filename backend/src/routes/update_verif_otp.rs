@@ -16,7 +16,7 @@ pub async fn update_verif_otp(
         .map_err(|_| AppError::BadRequest("Invalid Uuid format".to_string()))?;
 
     let otp_code = format!("{:06}", rng().random_range(1..1_000_000));
-    let expires_at = Utc::now() + Duration::minutes(5);
+    let expires_at = Utc::now() + Duration::minutes(10);
 
     sqlx::query!(
         "UPDATE otp_verif SET otp_code = $1, otp_expires_at = $2 WHERE user_id = $3",
