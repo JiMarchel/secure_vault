@@ -56,7 +56,7 @@ pub async fn sign_up(
             .await?;
 
     let otp_code = format!("{:06}", rng().random_range(1..1_000_000));
-    let expires_at = Utc::now() + Duration::minutes(5);
+    let expires_at = Utc::now() + Duration::minutes(10);
 
     let user_info: RegisterPayload = sqlx::query_as!(
         RegisterPayload,
