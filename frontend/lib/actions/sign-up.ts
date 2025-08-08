@@ -42,7 +42,7 @@ export async function signUpAction(
   const json_res = await response.json();
   const cookieStore = await cookies();
 
-  if (json_res.message === "verif_otp") {
+  if (json_res.message === "verif_otp" || json_res.message === "created") {
     cookieStore.set({
       name: "sc-verif-otp",
       value: json_res.id,
