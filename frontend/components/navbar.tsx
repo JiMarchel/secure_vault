@@ -108,6 +108,7 @@ export const Navbar = () => {
                     required
                     name="username"
                     defaultValue={state.inputs?.username}
+                    disabled={pending}
                   />
                   <span className="text-red-500 text-sm py-0">
                     {state?.errors?.username}
@@ -122,6 +123,7 @@ export const Navbar = () => {
                     required
                     name="email"
                     defaultValue={state.inputs?.email}
+                    disabled={pending}
                   />
                   <span className="text-red-500 text-sm py-0">
                     {state?.errors?.email}
