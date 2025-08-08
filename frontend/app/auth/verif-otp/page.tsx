@@ -1,5 +1,5 @@
 import { getUserBasicInfo } from "@/lib/query/get-user-basic-info";
-import { UserInfo } from "./user-info";
+import { VerifOtpCard } from "./card";
 import { cookies } from "next/headers";
 import { getOtpCode } from "@/lib/query/get-otp-code";
 
@@ -9,9 +9,14 @@ const AuthVerifOtp = async () => {
   const user = await getUserBasicInfo(userId);
   const otpCode = await getOtpCode(userId);
 
-  console.log(otpCode);
-
-  return <UserInfo username={user.username} email={user.email} otpExpiresAt={otpCode.otp_expires_at} id={userId}/>;
+  return (
+    <VerifOtpCard
+      username={user.username}
+      email={user.email}
+      otpExpiresAt={otpCode.otp_expires_at}
+      id={userId}
+    />
+  );
 };
 
 export default AuthVerifOtp;
