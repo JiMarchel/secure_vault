@@ -41,12 +41,13 @@ export async function verifOtpAction(
 
   const res = await response.json();
 
+  cookieStore.delete("sc-verif-otp");
+
   cookieStore.set({
     name: "sc-verif-password",
     value: res.id,
     path: "/",
   });
 
-  cookieStore.delete("sc-verif-otp")
   redirect("/auth/verif-password");
 }
