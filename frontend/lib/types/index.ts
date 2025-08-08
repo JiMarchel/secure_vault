@@ -4,8 +4,8 @@ export interface SignUpFormData {
 }
 
 export type MessageApi = {
-  messageApi?: string
-}
+  messageApi?: string;
+};
 
 export interface signUpActionResponse {
   errors?: {
@@ -24,5 +24,18 @@ export interface OtpVerifActionResponse {
     [K in keyof OtpVerifFormData]?: string[];
   };
   inputs?: OtpVerifFormData;
+  messageApi?: string;
+}
+
+export interface VerifPasswordFormData {
+  password?: string;
+  confirm_password?: string;
+}
+
+export interface VerifPasswordActionResponse {
+  errors?: {
+    [K in keyof VerifPasswordFormData]?: string[];
+  };
+  inputs?: VerifPasswordFormData;
   messageApi?: string;
 }
