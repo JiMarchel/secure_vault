@@ -3,6 +3,7 @@ import { cookies } from "next/headers";
 import { VerifPasswordActionResponse } from "../types";
 import { verifPasswordSchema } from "../schemas/verif-password";
 import z from "zod";
+import { createVault } from "../crypto/vault";
 
 export async function verifPasswordAction(
   _: VerifPasswordActionResponse,
@@ -25,6 +26,7 @@ export async function verifPasswordAction(
   }
 
   console.log("Raw Data:", rawData);
+
 
   const baseApiUrl = process.env.BASE_API_URL;
 
