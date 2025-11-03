@@ -18,3 +18,7 @@ thiserror = "2.0.12"
 tokio = { version = "1.47.1", features = ["full"] }
 uuid = { version = "1.17.0", features = ["serde", "v4"] }
 validator = { version = "0.20.0", features = ["derive"] }
+unicode-segmentation = "1.9.0"
+tower-sessions = "0.14.0"
+tower-sessions-sqlx-store = {version = "0.15.0", features = ["postgres"]}
+tower-http = {version = "0.6.6", features = ["cors"]}
