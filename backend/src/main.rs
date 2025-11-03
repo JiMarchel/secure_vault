@@ -1,26 +1,32 @@
-use std::env;
-
+use backend::infra::{app::create_app, db::init_db, setup::init_app_state};
 use dotenvy::dotenv;
-use sqlx::postgres::PgPoolOptions;
-use startup::run;
 use tokio::net::TcpListener;
-
-pub mod error;
-pub mod models;
-pub mod routes;
-pub mod startup;
-pub mod helper;
+use tower_sessions::{Expiry, SessionManagerLayer, cookie::{SameSite, time::Duration}};
+use tower_sessions_sqlx_store::PostgresStore;
 
 #[tokio::main]
-async fn main() {
+async fn main() -> anyhow::Result<()> {
     dotenv().ok();
-    let db_url = env::var("DATABASE_URL").expect("DB_URL_NOT_SET");
-    let db_connect = PgPoolOptions::new()
-        .max_connections(5)
-        .connect(&db_url)
-        .await
-        .expect("Failed to connect db");
 
-    let listener = TcpListener::bind("127.0.0.1:8000").await.unwrap();
-    run(listener, db_connect).await
+    let app_state = init_app_state().await?;
+
+    let pool = init_db().await?;
+
+    let session_store = PostgresStore::new(pool.clone());
+    session_store.migrate().await?;
+
+    let session_layer = SessionManagerLayer::new(session_store)
+        .with_expiry(Expiry::OnInactivity(Duration::hours(24)))
+        .with_secure(false)
+        .with_name("auth_session")
+        .with_http_only(true)
+        .with_path("/")
+        .with_same_site(SameSite::Lax);
+
+    let app = create_app(app_state, session_layer);
+
+    let listener = TcpListener::bind("localhost:8000").await?;
+    axum::serve(listener, app).await.unwrap();
+
+    Ok(())
 }
