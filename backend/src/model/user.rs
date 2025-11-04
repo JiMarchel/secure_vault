@@ -12,6 +12,12 @@ pub struct CheckSessionResponse {
 }
 
 #[derive(Serialize, sqlx::FromRow)]
+pub struct OtpRecord {
+    pub otp_code: String,
+    pub otp_expires_at: chrono::DateTime<chrono::Utc>,
+}
+
+#[derive(Serialize, sqlx::FromRow)]
 pub struct User {
     pub id: uuid::Uuid,
     pub username: String,
