@@ -1,11 +1,13 @@
 use std::sync::Arc;
 
 use axum::{
-    Json, Router, extract::State, http::StatusCode, response::IntoResponse, routing::get,
-    routing::post,
+    Json, Router,
+    extract::State,
+    http::StatusCode,
+    response::IntoResponse,
+    routing::{get, patch, post},
 };
 use tower_sessions::Session;
-use uuid::Uuid;
 
 use crate::{
     application::user::UserUseCase,
@@ -14,13 +16,16 @@ use crate::{
         app_error::{AppError, AppResult},
         user::CheckSessionResponse,
     },
+    service::session::get_session,
     validation::user::{NewUser, NewUserRequest},
 };
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/sign-up", post(register))
-        .route("/get/me", get(get_current_user))
+        .route("/session/get-me", get(get_current_user_with_session))
+        .route("/session/resend-otp", patch(send_otp_with_session))
+        .route("/session/get-otp", get(get_otp_with_session))
         .route("/check-session", get(check_session))
 }
 
@@ -38,15 +43,11 @@ pub async fn register(
     Ok((StatusCode::CREATED, Json(res)))
 }
 
-pub async fn get_current_user(
+pub async fn get_current_user_with_session(
     session: Session,
     State(user_use_case): State<Arc<UserUseCase>>,
 ) -> AppResult<impl IntoResponse> {
-    let user_id: Uuid = session
-        .get("verif_otp")
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?
-        .ok_or(AppError::Unauthorized)?;
+    let user_id = get_session(session, "verif_otp").await?;
 
     let user = user_use_case
         .user_persistence
@@ -57,12 +58,41 @@ pub async fn get_current_user(
     Ok((StatusCode::OK, Json(user)))
 }
 
+pub async fn send_otp_with_session(
+    session: Session,
+    State(user_use_case): State<Arc<UserUseCase>>,
+) -> AppResult<impl IntoResponse> {
+    let user_id = get_session(session, "verif_otp").await?;
+
+    let user = user_use_case
+        .user_persistence
+        .get_user_by_id(user_id)
+        .await?
+        .ok_or(AppError::Unauthorized)?;
+
+    user_use_case
+        .resend_verification_otp(user_id, &user.email, &user.username)
+        .await?;
+
+    Ok(StatusCode::OK)
+}
+
+pub async fn get_otp_with_session(
+    session: Session,
+    State(user_use_case): State<Arc<UserUseCase>>,
+) -> AppResult<impl IntoResponse> {
+    let user_id = get_session(session, "verif_otp").await?;
+
+    let otp_record = user_use_case
+        .otp_persistence
+        .get_otp_by_user_id(user_id)
+        .await?;
+
+    Ok((StatusCode::OK, Json(otp_record)))
+}
+
 pub async fn check_session(session: Session) -> AppResult<impl IntoResponse> {
-    if let Some(_) = session
-        .get::<Uuid>("verif_otp")
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?
-    {
+    if let Some(_) = get_session(session.clone(), "verif_otp").await.ok() {
         return Ok((
             StatusCode::OK,
             Json(CheckSessionResponse {
@@ -72,11 +102,7 @@ pub async fn check_session(session: Session) -> AppResult<impl IntoResponse> {
         ));
     }
 
-    if let Some(_) = session
-        .get::<Uuid>("verif_password")
-        .await
-        .map_err(|e| AppError::Internal(e.to_string()))?
-    {
+    if let Some(_) = get_session(session, "verif_password").await.ok() {
         return Ok((
             StatusCode::OK,
             Json(CheckSessionResponse {
