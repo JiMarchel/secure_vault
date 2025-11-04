@@ -96,7 +96,7 @@ impl UserUseCase {
         ))
     }
 
-    async fn send_verification_otp(
+    pub async fn send_verification_otp(
         &self,
         user_id: Uuid,
         email: &str,
@@ -107,6 +107,26 @@ impl UserUseCase {
 
         self.otp_persistence
             .create_otp(user_id, &otp_code, expires_at)
+            .await?;
+
+        self.email_service
+            .send_otp_email(email, username, &otp_code)
+            .await?;
+
+        Ok(())
+    }
+
+    pub async fn resend_verification_otp(
+        &self,
+        user_id: Uuid,
+        email: &str,
+        username: &str,
+    ) -> AppResult<()> {
+        let otp_code = self.otp_generator.generate_otp();
+        let expires_at = chrono::Utc::now() + chrono::Duration::minutes(10);
+
+        self.otp_persistence
+            .update_otp_by_user_id(user_id, &otp_code, expires_at)
             .await?;
 
         self.email_service
