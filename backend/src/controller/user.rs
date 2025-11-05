@@ -13,8 +13,7 @@ use crate::{
     application::user::UserUseCase,
     controller::app_state::AppState,
     model::{
-        app_error::{AppError, AppResult},
-        user::CheckSessionResponse,
+        app_error::{AppError, AppResult}, otp::VerifyOtp, user::CheckSessionResponse
     },
     service::session::get_session,
     validation::user::{NewUser, NewUserRequest},
@@ -23,6 +22,7 @@ use crate::{
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/sign-up", post(register))
+        .route("/verify-otp", patch(verify_otp))
         .route("/session/get-me", get(get_current_user_with_session))
         .route("/session/resend-otp", patch(send_otp_with_session))
         .route("/session/get-otp", get(get_otp_with_session))
@@ -41,6 +41,17 @@ pub async fn register(
         .await?;
 
     Ok((StatusCode::CREATED, Json(res)))
+}
+
+pub async fn verify_otp(
+    session: Session,
+    State(user_use_case): State<Arc<UserUseCase>>,
+    Json(payload): Json<VerifyOtp>,
+) -> AppResult<impl IntoResponse> {
+    let user_id = get_session(session.clone(), "verif_otp").await?;
+
+    user_use_case.verify_user_email(user_id, &payload.otp_code, session).await?;
+    Ok(StatusCode::OK)
 }
 
 pub async fn get_current_user_with_session(
@@ -68,7 +79,7 @@ pub async fn send_otp_with_session(
         .user_persistence
         .get_user_by_id(user_id)
         .await?
-        .ok_or(AppError::Unauthorized)?;
+        .ok_or(AppError::Unauthorized("User not found".to_string()))?;
 
     user_use_case
         .resend_verification_otp(user_id, &user.email, &user.username)
