@@ -11,6 +11,7 @@ use crate::{
     service::{
         email::EmailService,
         otp::{OtpGenerator, OtpPersistence},
+        session::{insert_session, remove_session},
         user::UserPersistence,
     },
 };
@@ -50,10 +51,8 @@ impl UserUseCase {
         let user_id = self.user_persistence.create_user(username, email).await?;
 
         self.send_verification_otp(user_id, email, username).await?;
-        session
-            .insert("verif_otp", user_id)
-            .await
-            .map_err(|e| AppError::Internal(e.to_string()))?;
+
+        insert_session(session, "verif_otp", user_id).await?;
         Ok(SignUpResponse {
             message: "created".to_string(),
         })
@@ -65,26 +64,17 @@ impl UserUseCase {
         session: Session,
     ) -> AppResult<SignUpResponse> {
         if user.is_pending_otp_verification() {
-            session
-                .insert("verif_otp", user.id)
-                .await
-                .map_err(|e| AppError::Internal(e.to_string()))?;
-            
+            insert_session(session, "verif_otp", user.id).await?;
+
             return Ok(SignUpResponse {
                 message: "verif_otp".to_string(),
             });
         }
 
         if user.is_pending_password_verification() {
-            let _: Option<Uuid> = session
-                .remove("verif_otp")
-                .await
-                .map_err(|e| AppError::Internal(e.to_string()))?;
+            let _ = remove_session(session.clone(), "verif_otp").await?;
 
-            session
-                .insert("verif_password", user.id)
-                .await
-                .map_err(|e| AppError::Internal(e.to_string()))?;
+            insert_session(session, "verif_password", user.id).await?;
 
             return Ok(SignUpResponse {
                 message: "verif_password".to_string(),
@@ -96,7 +86,7 @@ impl UserUseCase {
         ))
     }
 
-    pub async fn send_verification_otp(
+    async fn send_verification_otp(
         &self,
         user_id: Uuid,
         email: &str,
@@ -132,6 +122,33 @@ impl UserUseCase {
         self.email_service
             .send_otp_email(email, username, &otp_code)
             .await?;
+
+        Ok(())
+    }
+
+    pub async fn verify_user_email(
+        &self,
+        user_id: Uuid,
+        otp_code: &str,
+        session: Session,
+    ) -> AppResult<()> {
+        let otp_record = self.otp_persistence.get_otp_by_user_id(user_id).await?;
+
+        if otp_record.otp_code != otp_code {
+            return Err(AppError::Unauthorized("Invalid OTP code.".to_string()));
+        }
+
+        if chrono::Utc::now() > otp_record.otp_expires_at {
+            return Err(AppError::Unauthorized("OTP code has expired.".to_string()));
+        }
+
+        self.user_persistence
+            .update_email_verification(user_id)
+            .await?;
+        self.otp_persistence.delete_otp_by_user_id(user_id).await?;
+
+        remove_session(session.clone(), "verif_otp").await?;
+        insert_session(session, "verif_password", user_id).await?;
 
         Ok(())
     }
