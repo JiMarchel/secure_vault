@@ -17,8 +17,8 @@ pub enum AppError {
     #[error("Bad Request: {0}")]
     BadRequest(String),
 
-    #[error("Unauthorized")]
-    Unauthorized,
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
 
     #[error("Conflict{0}")]
     Conflict(String),
