@@ -43,4 +43,14 @@ impl UserPersistence for PostgresPersistence {
 
         Ok(user)
     }
+
+    async fn update_email_verification(&self, id: Uuid) -> AppResult<()> {
+        sqlx::query("UPDATE users SET is_email_verified = true WHERE id = $1")
+            .bind(id)   
+            .execute(&self.pool)
+            .await
+            .map_err(AppError::from)?;
+
+        Ok(())
+    }
 }
