@@ -11,7 +11,7 @@ impl IntoResponse for AppError {
             ),
             AppError::NotFound => (StatusCode::NOT_FOUND, "Data not found".to_string()),
             AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
-            AppError::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized".to_string()),
+            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
             AppError::Conflict(s) => (StatusCode::CONFLICT, s),
             AppError::Forbidden(s) => (StatusCode::FORBIDDEN, s),
             AppError::Database(_) => (
