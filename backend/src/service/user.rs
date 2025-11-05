@@ -8,4 +8,5 @@ pub trait UserPersistence: Send + Sync {
     async fn create_user(&self, username: &str, email: &str) -> AppResult<Uuid>;
     async fn get_user_by_email(&self, email: &str) -> AppResult<Option<User>>;
     async fn get_user_by_id(&self, id: Uuid)-> AppResult<Option<User>>;
+    async fn update_email_verification(&self, id: Uuid) -> AppResult<()>;
 }
