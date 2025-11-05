@@ -11,16 +11,14 @@ pub trait OtpPersistence: Send + Sync {
         code: &str,
         expires_at: chrono::DateTime<chrono::Utc>,
     ) -> AppResult<()>;
-    async fn get_otp_by_user_id(
-        &self,
-        user_id: Uuid,
-    ) -> AppResult<OtpRecord>;
+    async fn get_otp_by_user_id(&self, user_id: Uuid) -> AppResult<OtpRecord>;
     async fn update_otp_by_user_id(
         &self,
         user_id: Uuid,
         code: &str,
         expires_at: chrono::DateTime<chrono::Utc>,
     ) -> AppResult<()>;
+    async fn delete_otp_by_user_id(&self, user_id: Uuid) -> AppResult<()>;
 }
 
 pub trait OtpGenerator: Send + Sync {
