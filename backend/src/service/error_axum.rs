@@ -21,6 +21,13 @@ impl IntoResponse for AppError {
             AppError::InvalidCredentials => {
                 (StatusCode::UNAUTHORIZED, "Invalid credentials".to_string())
             }
+            AppError::TokenCreation(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
+            AppError::TokenValidation(msg) => (StatusCode::UNAUTHORIZED, msg),
+            AppError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid JWT token".to_string()),
+            AppError::ExpiredToken => (
+                StatusCode::UNAUTHORIZED,
+                "JWT token has expired".to_string(),
+            ),
         };
 
         let body = serde_json::json!({"error": error_message});
