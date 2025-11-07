@@ -46,10 +46,33 @@ impl UserPersistence for PostgresPersistence {
 
     async fn update_email_verification(&self, id: Uuid) -> AppResult<()> {
         sqlx::query("UPDATE users SET is_email_verified = true WHERE id = $1")
-            .bind(id)   
+            .bind(id)
             .execute(&self.pool)
             .await
             .map_err(AppError::from)?;
+
+        Ok(())
+    }
+
+    async fn update_user_identifier(
+        &self,
+        encrypted_dek: String,
+        nonce: String,
+        salt: String,
+        argon2_params: String,
+        user_id: Uuid,
+    ) -> AppResult<()> {
+        sqlx::query(
+            "UPDATE users SET encrypted_dek = $1, nonce = $2, salt = $3, argon2_params = $4 WHERE id = $5",
+        )
+        .bind(encrypted_dek)
+        .bind(nonce)
+        .bind(salt)
+        .bind(argon2_params)
+        .bind(user_id)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::from)?;
 
         Ok(())
     }
