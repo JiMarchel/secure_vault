@@ -1,4 +1,4 @@
-use serde::Serialize;
+use serde::{Serialize};
 
 #[derive(Serialize)]
 pub struct SignUpResponse {
@@ -9,12 +9,6 @@ pub struct SignUpResponse {
 pub struct CheckSessionResponse {
     pub authenticated: bool,
     pub message: Option<String>,
-}
-
-#[derive(Serialize, sqlx::FromRow)]
-pub struct OtpRecord {
-    pub otp_code: String,
-    pub otp_expires_at: chrono::DateTime<chrono::Utc>,
 }
 
 #[derive(Serialize, sqlx::FromRow)]
