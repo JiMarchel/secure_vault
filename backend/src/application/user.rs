@@ -152,4 +152,21 @@ impl UserUseCase {
 
         Ok(())
     }
+
+    pub async fn update_user_identifier(
+        &self,
+        encrypted_dek: String,
+        nonce: String,
+        salt: String,
+        argon2_params: String,
+        user_id: Uuid,
+        session: Session,
+    ) -> AppResult<()> {
+        self.user_persistence
+            .update_user_identifier(encrypted_dek, nonce, salt, argon2_params, user_id)
+            .await?;
+
+        remove_session(session, "verif_password").await?;
+        Ok(())
+    }
 }
