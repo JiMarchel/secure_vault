@@ -1,7 +1,7 @@
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::model::{app_error::AppResult, user::OtpRecord};
+use crate::model::{app_error::AppResult, otp::OtpRecord, };
 
 #[async_trait]
 pub trait OtpPersistence: Send + Sync {
