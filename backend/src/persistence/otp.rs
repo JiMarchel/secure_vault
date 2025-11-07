@@ -3,8 +3,7 @@ use uuid::Uuid;
 
 use crate::{
     model::{
-        app_error::{AppError, AppResult},
-        user::OtpRecord,
+        app_error::{AppError, AppResult}, otp::OtpRecord,
     },
     persistence::postgres::PostgresPersistence,
     service::otp::OtpPersistence,
