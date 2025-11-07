@@ -25,6 +25,19 @@ pub enum AppError {
 
     #[error("Forbidden: {0}")]
     Forbidden(String),
+
+    // JWT related errors
+    #[error("JWT token creation failed: {0}")]
+    TokenCreation(String),
+
+    #[error("JWT token validation failed: {0}")]
+    TokenValidation(String),
+
+    #[error("Invalid JWT token")]
+    InvalidToken,
+
+    #[error("JWT token has expired")]
+    ExpiredToken,
 }
 
 pub type AppResult<T> = Result<T, AppError>;
