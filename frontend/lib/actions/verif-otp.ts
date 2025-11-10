@@ -3,16 +3,17 @@ import { OtpVerifActionResponse } from "../types";
 import { otpVerifSchema } from "../schemas/verif-otp";
 import z from "zod";
 import { redirect } from "next/navigation";
-import { cookies } from "next/headers";
+import { getAuthSession } from "./get-session-cookie";
 
 export async function verifOtpAction(
   _: OtpVerifActionResponse | null,
   formData: FormData
 ): Promise<OtpVerifActionResponse> {
-  const cookieStore = await cookies();
+  const authSession = await getAuthSession();
+  console.log(authSession)
+
   const rawData = {
-    otp_code: formData.get("otp") as string,
-    id: formData.get("id") as string,
+    otp_code: formData.get("otp_code") as string,
   };
 
   const validateFields = otpVerifSchema.safeParse(rawData);
@@ -24,30 +25,20 @@ export async function verifOtpAction(
     };
   }
 
-  const baseApiUrl = process.env.BASE_API_URL;
-  const response = await fetch(`${baseApiUrl}/users/otp-code/verif`, {
+  const response = await fetch("http://localhost:8000/api/user/verify-otp", {
     method: "PATCH",
-    headers: { "Content-Type": "application/json" },
+    headers: { "Content-Type": "application/json", Cookie: authSession },
     body: JSON.stringify(rawData),
   });
 
   if (!response.ok) {
     const res = await response.json();
+    console.log(res)
     return {
       messageApi: res.error,
       inputs: { otp_code: rawData.otp_code },
     };
   }
-
-  const res = await response.json();
-
-  cookieStore.delete("sc-verif-otp");
-
-  cookieStore.set({
-    name: "sc-verif-password",
-    value: res.id,
-    path: "/",
-  });
 
   redirect("/auth/verif-password");
 }
