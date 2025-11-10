@@ -1,11 +1,18 @@
 use serde::{Deserialize, Serialize};
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct Claims {
     pub sub: String,
     pub exp: i64,
     pub iat: i64,
-    pub username: String,
     pub email: String,
 }
 
+#[derive(Clone, Serialize)]
+pub struct AuthTokens {
+    pub access_token: String,
+    pub refresh_token: String,
+    pub token_type: String,
+    /// seconds
+    pub expires_in: i64, 
+}
