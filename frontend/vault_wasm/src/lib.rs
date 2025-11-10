@@ -4,7 +4,7 @@ use argon2::{
 };
 use base64::{Engine, prelude::BASE64_STANDARD};
 use chacha20poly1305::{
-    Key, KeyInit, XChaCha20Poly1305, XNonce,
+    KeyInit, XChaCha20Poly1305, XNonce,
     aead::{Aead, Payload},
 };
 use serde::Serialize;
@@ -12,7 +12,7 @@ use wasm_bindgen::prelude::*;
 use zeroize::Zeroize;
 
 #[derive(Serialize)]
-pub struct VaultPayload {
+pub struct UserIdentifierPayload {
     pub encrypted_dek: String,
     pub nonce: String,
     pub salt: String,
@@ -45,7 +45,7 @@ fn aad_bytes() -> &'static [u8] {
 }
 
 #[wasm_bindgen]
-pub fn create_vault_wasm(master_password: &str) -> String {
+pub fn create_user_identifier(master_password: &str) -> String {
     let param = Params::new(64 * 1024, 3, 1, None).expect("Invalid argon2 params");
     let argon2_param_str = format_argon2_params(&param);
 
@@ -57,8 +57,8 @@ pub fn create_vault_wasm(master_password: &str) -> String {
     let mut dek = [0u8; 32];
     getrandom::getrandom(&mut dek).expect("RNG failed");
 
-    let chiper = XChaCha20Poly1305::new(Key::from_slice(&master_key));
-    let mut nonce_bytes = [0u8, 24];
+    let chiper = XChaCha20Poly1305::new(&master_key.into());
+    let mut nonce_bytes = [0u8; 24];
     getrandom::getrandom(&mut nonce_bytes).expect("RNG failed");
     let nonce = XNonce::from_slice(&nonce_bytes);
 
@@ -72,7 +72,7 @@ pub fn create_vault_wasm(master_password: &str) -> String {
     key_for_zeroize.zeroize();
     dek.zeroize();
 
-    let vp = VaultPayload {
+    let vp = UserIdentifierPayload {
         encrypted_dek: BASE64_STANDARD.encode(&encrypted),
         nonce: BASE64_STANDARD.encode(&nonce_bytes),
         salt: BASE64_STANDARD.encode(salt_raw),
