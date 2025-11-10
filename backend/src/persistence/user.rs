@@ -76,4 +76,25 @@ impl UserPersistence for PostgresPersistence {
 
         Ok(())
     }
+
+    async fn save_refresh_token(&self, user_id: Uuid, refresh_token: &str) -> AppResult<()> {
+        sqlx::query(
+            r#"
+            INSERT INTO refresh_tokens (user_id, token, expires_at)
+            VALUES ($1, $2, NOW() + INTERVAL '7 days')
+            ON CONFLICT (user_id)
+            DO UPDATE SET
+                token = EXCLUDED.token,
+                expires_at = EXCLUDED.expires_at,
+                updated_at = NOW()
+        "#,
+        )
+        .bind(user_id)
+        .bind(refresh_token)
+        .execute(&self.pool)
+        .await
+        .map_err(AppError::from)?;
+
+        Ok(())
+    }
 }
