@@ -24,8 +24,7 @@ export async function signUpAction(
     };
   }
 
-  const baseApiUrl = process.env.BASE_API_URL;
-  const response = await fetch(`${baseApiUrl}/sign-up`, {
+  const response = await fetch("http://localhost:8000/api/user/sign-up", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(validateFields.data),
@@ -39,22 +38,28 @@ export async function signUpAction(
     };
   }
 
+  const setCookieHeader = response.headers.get("Set-Cookie");
+  if (setCookieHeader) {
+    const cookieStore = await cookies();
+    const cookieParts = setCookieHeader.split(";")[0].split("=");
+    const cookieName = cookieParts[0];
+    const cookieValue = cookieParts[1];
+
+    cookieStore.set({
+      name: cookieName,
+      value: cookieValue,
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24,
+    });
+  }
+
   const json_res = await response.json();
-  const cookieStore = await cookies();
 
   if (json_res.message === "verif_otp" || json_res.message === "created") {
-    cookieStore.set({
-      name: "sc-verif-otp",
-      value: json_res.id,
-      path: "/",
-    });
     redirect("/auth/verif-otp");
   } else if (json_res.message === "verif_password") {
-    cookieStore.set({
-      name: "sc-verif-password",
-      value: json_res.id,
-      path: "/",
-    });
     redirect("/auth/verif-password");
   } else {
   }
