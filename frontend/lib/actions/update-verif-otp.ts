@@ -2,19 +2,11 @@
 
 import { revalidatePath } from "next/cache";
 
-export async function updateVerifOtp(_: unknown, formData: FormData) {
-  const rawData = {
-    id: formData.get("id") as string,
-  };
-  console.log(rawData);
-
-  await fetch(
-    `${process.env.BASE_API_URL}/users/otp-code/update/${rawData.id}`,
-    {
-      method: "PATCH",
-      body: JSON.stringify(rawData),
-    }
-  );
+export async function updateVerifOtp(_: unknown, cookieHeader?: string) {
+  await fetch(`http://localhost:8000/api/user/session/resend-otp`, {
+    method: "PATCH",
+    headers: cookieHeader ? { Cookie: cookieHeader } : {},
+  });
 
   revalidatePath("/auth/verif-otp");
 }
