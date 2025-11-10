@@ -25,9 +25,10 @@ export const Navbar = () => {
     signUpAction,
     initialState
   );
+
   const pathname = usePathname();
   return (
-    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
+    <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-backdrop-filter:bg-white/60">
       <div className="flex h-16 items-center justify-between px-4 md:px-6">
         <Link className="flex items-center space-x-2" href="/">
           <Shield className="h-8 w-8 text-emerald-600" />
@@ -81,7 +82,6 @@ export const Navbar = () => {
             </DialogContent>
           </Dialog>
 
-          {/* Sign Up Dialog */}
           <Dialog>
             <DialogTrigger asChild>
               <Button
@@ -98,7 +98,7 @@ export const Navbar = () => {
                   Start securing your passwords today
                 </DialogDescription>
               </DialogHeader>
-              <form className="space-y-4" action={formAction}>
+               <form className="space-y-4" action={formAction}>
                 <div className="space-y-2">
                   <Label htmlFor="username">Username</Label>
                   <Input
