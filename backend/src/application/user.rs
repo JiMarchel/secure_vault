@@ -6,10 +6,12 @@ use uuid::Uuid;
 use crate::{
     model::{
         app_error::{AppError, AppResult},
+        jwt::AuthTokens,
         user::{SignUpResponse, User},
     },
     service::{
         email::EmailService,
+        jwt::JwtService,
         otp::{OtpGenerator, OtpPersistence},
         session::{insert_session, remove_session},
         user::UserPersistence,
@@ -21,6 +23,7 @@ pub struct UserUseCase {
     pub otp_persistence: Arc<dyn OtpPersistence>,
     pub otp_generator: Arc<dyn OtpGenerator>,
     pub email_service: Arc<dyn EmailService>,
+    pub jwt_service: Arc<JwtService>,
 }
 
 impl UserUseCase {
@@ -29,12 +32,14 @@ impl UserUseCase {
         otp_persistence: Arc<dyn OtpPersistence>,
         otp_generator: Arc<dyn OtpGenerator>,
         email_service: Arc<dyn EmailService>,
+        jwt_service: Arc<JwtService>,
     ) -> Self {
         Self {
             user_persistence,
             otp_persistence,
             otp_generator,
             email_service,
+            jwt_service,
         }
     }
 
@@ -161,12 +166,33 @@ impl UserUseCase {
         argon2_params: String,
         user_id: Uuid,
         session: Session,
-    ) -> AppResult<()> {
+    ) -> AppResult<AuthTokens> {
         self.user_persistence
             .update_user_identifier(encrypted_dek, nonce, salt, argon2_params, user_id)
             .await?;
 
         remove_session(session, "verif_password").await?;
-        Ok(())
+
+        let user = self
+            .user_persistence
+            .get_user_by_id(user_id)
+            .await?
+            .ok_or(AppError::NotFound)?;
+
+        let access_token = self.jwt_service.create_access_token(user_id, &user.email)?;
+        let refresh_token = self
+            .jwt_service
+            .create_refresh_token(user_id, &user.email)?;
+
+        self.user_persistence
+            .save_refresh_token(user_id, &refresh_token)
+            .await?;
+
+        Ok(AuthTokens {
+            access_token,
+            refresh_token,
+            token_type: "Bearer".to_string(),
+            expires_in: 900,
+        })
     }
 }
