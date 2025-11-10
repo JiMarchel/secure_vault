@@ -12,7 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { verifOtpAction } from "@/lib/actions/verif-otp";
 import { verifPasswordAction } from "@/lib/actions/verif-password";
-import { createVault } from "@/lib/crypto/vault";
+import { createUserIdentifier } from "@/lib/crypto/vault";
 import {
   OtpVerifActionResponse,
   VerifPasswordActionResponse,
@@ -28,6 +28,8 @@ interface VerifPasswordCardProps {
 }
 
 export const VerifPasswordCard = ({ id, username }: VerifPasswordCardProps) => {
+  const userIdentifier = createUserIdentifier("ASDasd123@").then((v) => v);
+  console.log({ userIdentifier });
   const [isHidden, setIsHidden] = useState(true);
   const [state, action, pending] = useActionState(
     verifPasswordAction,
@@ -38,9 +40,7 @@ export const VerifPasswordCard = ({ id, username }: VerifPasswordCardProps) => {
   const confirmPasswordError = state.errors?.confirm_password || "";
   const splitErrors = [...passwordError, ...confirmPasswordError];
 
-  // const vault = await createVault("ASDasd123@");
 
-  console.log({ vault });
   return (
     <div className="fixed top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 w-xl bg-gray-50 shadow-2xl">
       <Card className="w-full max-w-xl shadow-lg">
