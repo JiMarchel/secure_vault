@@ -1,20 +1,23 @@
-import { getUserBasicInfo } from "@/lib/query/get-user-basic-info";
-import { VerifOtpCard } from "./card";
-import { cookies } from "next/headers";
 import { getOtpCode } from "@/lib/query/get-otp-code";
+import { VerifOtpCard } from "./card";
+import { getUserMe } from "@/lib/query/get-user-me";
+import { getAuthSession } from "@/lib/actions/get-session-cookie";
 
 const AuthVerifOtp = async () => {
-  const cookie = cookies();
-  const userId = (await cookie).get("sc-verif-otp")?.value;
-  const user = await getUserBasicInfo(userId);
-  const otpCode = await getOtpCode(userId);
+  const cookieString = await getAuthSession();
+  console.log(cookieString)
+
+  const otpRecord = await getOtpCode(cookieString);
+  const user = await getUserMe(cookieString);
 
   return (
     <VerifOtpCard
+      cookieString={cookieString}
+      id={user.id}
       username={user.username}
       email={user.email}
-      otpExpiresAt={otpCode.otp_expires_at}
-      id={userId}
+      otp_code={otpRecord.otp_code}
+      otp_expires_at={otpRecord.otp_expires_at}
     />
   );
 };
