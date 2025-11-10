@@ -1,6 +1,10 @@
-export const getOtpCode = async (id: string | undefined): Promise<OtpVerif> => {
-  const baseApiUrl = process.env.BASE_API_URL;
-  const response = await fetch(`${baseApiUrl}/users/otp-code/${id}`);
+export const getOtpCode = async (cookieHeader?: string): Promise<OtpVerif> => {
+  const response = await fetch(
+    "http://localhost:8000/api/user/session/get-otp",
+    {
+      headers: cookieHeader ? { Cookie: cookieHeader } : {},
+    }
+  );
 
   if (!response.ok) {
     const res = await response.json();
@@ -13,7 +17,7 @@ export const getOtpCode = async (id: string | undefined): Promise<OtpVerif> => {
 };
 
 type OtpVerif = {
-  id: string;
+  // id: string;
   otp_code: string;
   otp_expires_at: string;
 };
