@@ -3,7 +3,6 @@ import { cookies } from "next/headers";
 import { VerifPasswordActionResponse } from "../types";
 import { verifPasswordSchema } from "../schemas/verif-password";
 import z from "zod";
-import { createVault } from "../crypto/vault";
 
 export async function verifPasswordAction(
   _: VerifPasswordActionResponse,
