@@ -1,6 +1,7 @@
 use std::sync::Arc;
 
 use tower_sessions::Session;
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
@@ -43,6 +44,11 @@ impl UserUseCase {
         }
     }
 
+    #[instrument(
+        name= "use_case.sign_up", 
+        skip(self, session, username, email), 
+        fields(email=%email, username=%username)
+    )]
     pub async fn sign_up(
         &self,
         username: &str,
@@ -63,6 +69,11 @@ impl UserUseCase {
         })
     }
 
+    #[instrument(
+        name="use_case.handle_existing_user", 
+        skip(self, user, session), 
+        fields(user_id=%user.id, email=%user.email)
+    )]
     async fn handle_existing_user(
         &self,
         user: User,
@@ -91,6 +102,11 @@ impl UserUseCase {
         ))
     }
 
+    #[instrument(
+        name="use_case.send_verification_otp", 
+        skip(self), 
+        fields(user_id=%user_id, email=%email, username=%username)
+    )]
     async fn send_verification_otp(
         &self,
         user_id: Uuid,
@@ -111,6 +127,11 @@ impl UserUseCase {
         Ok(())
     }
 
+    #[instrument(
+        name="use_case.resend_verification_otp", 
+        skip(self), 
+        fields(user_id=%user_id, email=%email, username=%username)
+    )]
     pub async fn resend_verification_otp(
         &self,
         user_id: Uuid,
@@ -131,6 +152,11 @@ impl UserUseCase {
         Ok(())
     }
 
+    #[instrument(
+        name= "use_case.verify_user_email", 
+        skip(self, session), 
+        fields(user_id=%user_id, otp_length=%otp_code.len())
+    )]
     pub async fn verify_user_email(
         &self,
         user_id: Uuid,
@@ -158,6 +184,11 @@ impl UserUseCase {
         Ok(())
     }
 
+    #[instrument(
+        name= "use_case.update_user_identifier", 
+        skip(self, session, encrypted_dek, nonce, salt, argon2_params), 
+        fields(user_id=%user_id)
+    )]
     pub async fn update_user_identifier(
         &self,
         encrypted_dek: String,
