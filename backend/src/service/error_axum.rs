@@ -4,6 +4,8 @@ use crate::model::app_error::AppError;
 
 impl IntoResponse for AppError {
     fn into_response(self) -> axum::response::Response {
+        tracing::error!(error = ?self, "Request failed");
+
         let (status, error_message) = match self {
             AppError::Internal(_) => (
                 StatusCode::INTERNAL_SERVER_ERROR,
