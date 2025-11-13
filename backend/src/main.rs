@@ -1,8 +1,12 @@
 use backend::infra::{app::create_app, db::init_db, setup::init_app_state};
 use dotenvy::dotenv;
 use tokio::net::TcpListener;
-use tower_sessions::{Expiry, SessionManagerLayer, cookie::{SameSite, time::Duration}};
+use tower_sessions::{
+    Expiry, SessionManagerLayer,
+    cookie::{SameSite, time::Duration},
+};
 use tower_sessions_sqlx_store::PostgresStore;
+use tracing::info;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
@@ -27,6 +31,8 @@ async fn main() -> anyhow::Result<()> {
 
     let listener = TcpListener::bind("localhost:8000").await?;
     axum::serve(listener, app).await.unwrap();
+
+    info!("Server running on http://localhost:8000");
 
     Ok(())
 }
