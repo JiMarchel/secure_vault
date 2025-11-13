@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use tracing::{instrument, error};
 use uuid::Uuid;
 
 use crate::{
@@ -12,6 +13,11 @@ use crate::{
 
 #[async_trait]
 impl UserPersistence for PostgresPersistence {
+    #[instrument(
+        name= "persistence.create_user", 
+        skip(self), 
+        fields(email=%email, username=%username)
+    )]
     async fn create_user(&self, username: &str, email: &str) -> AppResult<Uuid> {
         let id =
             sqlx::query_scalar("INSERT INTO users (username, email) VALUES($1, $2) RETURNING id")
@@ -19,41 +25,73 @@ impl UserPersistence for PostgresPersistence {
                 .bind(email)
                 .fetch_one(&self.pool)
                 .await
-                .map_err(AppError::from)?;
+                .map_err(|e| {
+                    error!(error = %e, "Database error while creating user");
+                    AppError::from(e)
+                })?;
 
         Ok(id)
     }
 
+    #[instrument(
+        name= "persistence.get_user_by_email", 
+        skip(self), 
+        fields(email=%email)
+    )]
     async fn get_user_by_email(&self, email: &str) -> AppResult<Option<User>> {
         let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = $1")
             .bind(email)
             .fetch_optional(&self.pool)
             .await
-            .map_err(AppError::from)?;
+            .map_err(|e| {
+                error!(error = %e, "Database error while fetching user by email");
+                AppError::from(e)
+            })?;
 
         Ok(user)
     }
 
+    #[instrument(
+        name= "persistence.get_user_by_id",
+        skip(self),
+        fields(user_id=%id)
+    )]
     async fn get_user_by_id(&self, id: Uuid) -> AppResult<Option<User>> {
         let user = sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
             .bind(id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(AppError::from)?;
+            .map_err(|e| {
+                error!(error = %e, "Database error while fetching user by id");
+                AppError::from(e)
+            })?;
 
         Ok(user)
     }
 
+    #[instrument(
+        name= "persistence.update_email_verification", 
+        skip(self), 
+        fields(user_id=%id)
+    )]
     async fn update_email_verification(&self, id: Uuid) -> AppResult<()> {
         sqlx::query("UPDATE users SET is_email_verified = true WHERE id = $1")
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(AppError::from)?;
+            .map_err(|e| {
+                error!(error = %e, "Database error while updating email verification");
+                AppError::from(e)
+            })?;
 
         Ok(())
     }
 
+    #[instrument(
+        name= "persistence.update_user_identifier", 
+        skip(self, encrypted_dek, nonce, salt, argon2_params), 
+        fields(user_id=%user_id)
+    )]
     async fn update_user_identifier(
         &self,
         encrypted_dek: String,
@@ -72,11 +110,19 @@ impl UserPersistence for PostgresPersistence {
         .bind(user_id)
         .execute(&self.pool)
         .await
-        .map_err(AppError::from)?;
+        .map_err(|e| {
+            error!(error = %e, "Database error while updating user identifier");
+            AppError::from(e)
+        })?;
 
         Ok(())
     }
 
+    #[instrument(
+        name= "persistence.save_refresh_token", 
+        skip(self, refresh_token), 
+        fields(user_id=%user_id)
+    )]
     async fn save_refresh_token(&self, user_id: Uuid, refresh_token: &str) -> AppResult<()> {
         sqlx::query(
             r#"
@@ -93,7 +139,10 @@ impl UserPersistence for PostgresPersistence {
         .bind(refresh_token)
         .execute(&self.pool)
         .await
-        .map_err(AppError::from)?;
+        .map_err(|e| {
+            error!(error = %e, "Database error while saving refresh token");
+            AppError::from(e)
+        })?;
 
         Ok(())
     }
