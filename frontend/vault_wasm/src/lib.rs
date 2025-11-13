@@ -11,6 +11,9 @@ use serde::Serialize;
 use wasm_bindgen::prelude::*;
 use zeroize::Zeroize;
 
+// cargo install wasm-pack
+// wasm-pack build --release --target web --out-dir pkg
+
 #[derive(Serialize)]
 pub struct UserIdentifierPayload {
     pub encrypted_dek: String,
