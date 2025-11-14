@@ -121,8 +121,7 @@ impl UserUseCase {
             .await?;
 
         self.email_service
-            .send_otp_email(email, username, &otp_code)
-            .await?;
+            .send_email_async(email, username, &otp_code).await?;
 
         Ok(())
     }
