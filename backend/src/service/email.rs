@@ -6,15 +6,17 @@ use lettre::{
     message::{Mailbox, header::ContentType},
     transport::smtp::authentication::Credentials,
 };
-use tracing::{info, warn};
+use tracing::{error, info, instrument, warn};
 
 use crate::model::app_error::{AppError, AppResult};
 
 #[async_trait]
 pub trait EmailService: Send + Sync {
     async fn send_otp_email(&self, email: &str, username: &str, otp_code: &str) -> AppResult<()>;
+    async fn send_email_async(&self, email: &str, username: &str, otp_code: &str) -> AppResult<()>;
 }
 
+#[derive(Clone)]
 pub struct SmtpEmailService {
     smtp_host: String,
     smtp_username: String,
@@ -40,9 +42,13 @@ impl SmtpEmailService {
 
 #[async_trait]
 impl EmailService for SmtpEmailService {
-    async fn send_otp_email(&self, email: &str, username: &str, otp_code: &str) -> AppResult<()> {
-        let start = Instant::now();
 
+    #[instrument(
+        name = "send_otp_email", 
+        skip(self), 
+        fields(email = %email, username = %username)
+    )]
+    async fn send_otp_email(&self, email: &str, username: &str, otp_code: &str) -> AppResult<()> {
         let message = Message::builder()
             .from(Mailbox::new(
                 Some("No Reply".to_owned()),
@@ -68,14 +74,26 @@ impl EmailService for SmtpEmailService {
             .send(&message)
             .map_err(|e| AppError::Internal(format!("Failed to send email {e}")))?;
 
-        let duration = start.elapsed();
+        Ok(())
+    }
 
-        if duration.as_millis() > 1000 {
-            warn!("Slow email delivery: {}ms", duration.as_millis());
-        } else {
-            info!("Email sent in {}ms", duration.as_millis());
-        }
-        
+    async fn send_email_async(&self, email: &str, username: &str, otp_code: &str) -> AppResult<()> {
+        let email = email.to_string();
+        let username = username.to_string();
+        let otp_code = otp_code.to_string();
+        let self_clone = self.clone();
+
+        tokio::spawn(async move {
+            match self_clone.send_otp_email(&email, &username, &otp_code).await {
+                Ok(_) => {
+                    info!("Email sent successfully to {}", email);
+                }
+                Err(e) => {
+                    error!("Failed to send email to {}: {}", email, e);
+                }
+                
+            }
+        });
         Ok(())
     }
 }
