@@ -1,12 +1,10 @@
-use std::time::Instant;
-
 use async_trait::async_trait;
 use lettre::{
     Message, SmtpTransport, Transport,
     message::{Mailbox, header::ContentType},
     transport::smtp::authentication::Credentials,
 };
-use tracing::{error, info, instrument, warn};
+use tracing::{error, info, instrument};
 
 use crate::model::app_error::{AppError, AppResult};
 
