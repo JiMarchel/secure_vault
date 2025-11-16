@@ -1,4 +1,9 @@
-use axum::{extract::Request, http::HeaderValue, middleware::Next, response::Response};
+use axum::{
+    extract::{FromRequestParts, Request},
+    http::{HeaderValue, StatusCode, request::Parts},
+    middleware::Next,
+    response::Response,
+};
 use uuid::Uuid;
 
 pub const HEADER_X_REQUEST_ID: &str = "x-request-id";
@@ -36,4 +41,32 @@ fn extract_or_generate_request_id(request: &Request) -> String {
     }
 
     Uuid::new_v4().to_string()
+}
+
+#[derive(Clone)]
+pub struct ExtractRequestId(pub String);
+
+impl<S> FromRequestParts<S> for ExtractRequestId
+where
+    S: Send + Sync + 'static,
+{
+    type Rejection = (StatusCode, String);
+
+    fn from_request_parts(
+        parts: &mut Parts,
+        _state: &S,
+    ) -> impl std::future::Future<Output = Result<Self, Self::Rejection>> + Send {
+        let result = parts
+            .extensions
+            .get::<RequestId>()
+            .map(|id| ExtractRequestId(id.0.clone()))
+            .ok_or_else(|| {
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    "Request ID not found in extensions".to_string(),
+                )
+            });
+
+        std::future::ready(result)
+    }
 }
