@@ -95,7 +95,7 @@ pub async fn get_current_user_with_session(
         .user_persistence
         .get_user_by_id(user_id)
         .await?
-        .ok_or(AppError::NotFound)?;
+        .ok_or(AppError::NotFound("User not found".to_string()))?;
 
     info!("Current user fetched successfully");
     Ok((StatusCode::OK, Json(user)))
