@@ -31,7 +31,7 @@ impl OtpPersistence for PostgresPersistence {
         .bind(expires_at)
         .execute(&self.pool)
         .await
-        .map_err(AppError::from)?;
+        .map_err(|e| AppError::from(e))?;
 
         Ok(())
     }
@@ -48,7 +48,7 @@ impl OtpPersistence for PostgresPersistence {
         .bind(user_id)
         .fetch_one(&self.pool)
         .await
-        .map_err(AppError::from)?;
+        .map_err(|e| AppError::from(e))?;
 
         Ok(record)
     }
@@ -70,7 +70,7 @@ impl OtpPersistence for PostgresPersistence {
             .bind(user_id)
             .execute(&self.pool)
             .await
-            .map_err(AppError::from)?;
+            .map_err(|e| AppError::from(e))?;
 
         Ok(())
     }
@@ -85,7 +85,7 @@ impl OtpPersistence for PostgresPersistence {
             .bind(user_id)
             .execute(&self.pool)
             .await
-            .map_err(AppError::from)?;
+            .map_err(|e| AppError::from(e))?;
         Ok(())
     }
 }
