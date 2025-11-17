@@ -1,38 +1,68 @@
-use axum::{http::StatusCode, response::IntoResponse};
+use axum::{
+    Json,
+    http::StatusCode,
+    response::{IntoResponse, Response},
+};
 
-use crate::model::app_error::AppError;
-
+use crate::model::{app_error::AppError, response::ErrorResponse};
 impl IntoResponse for AppError {
-    fn into_response(self) -> axum::response::Response {
-        tracing::error!(error = ?self, "Request failed");
+    fn into_response(self) -> Response {
+        let error_code = self.error_code();
+        let user_message = self.user_message();
 
-        let (status, error_message) = match self {
-            AppError::Internal(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Internal server error".to_string(),
-            ),
-            AppError::NotFound => (StatusCode::NOT_FOUND, "Data not found".to_string()),
-            AppError::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg),
-            AppError::Unauthorized(msg) => (StatusCode::UNAUTHORIZED, msg),
-            AppError::Conflict(s) => (StatusCode::CONFLICT, s),
-            AppError::Forbidden(s) => (StatusCode::FORBIDDEN, s),
-            AppError::Database(_) => (
-                StatusCode::INTERNAL_SERVER_ERROR,
-                "Database error".to_string(),
-            ),
-            AppError::InvalidCredentials => {
-                (StatusCode::UNAUTHORIZED, "Invalid credentials".to_string())
+        // Log the full error with details for debugging
+        tracing::error!(
+            error_code = error_code,
+            error = ?self,
+            "Request failed"
+        );
+
+        let (status, error_response) = match &self {
+            AppError::Database(e) => {
+                tracing::error!(database_error = e, "Database error occurred");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    ErrorResponse::new(user_message),
+                )
             }
-            AppError::TokenCreation(msg) => (StatusCode::INTERNAL_SERVER_ERROR, msg),
-            AppError::TokenValidation(msg) => (StatusCode::UNAUTHORIZED, msg),
-            AppError::InvalidToken => (StatusCode::UNAUTHORIZED, "Invalid JWT token".to_string()),
-            AppError::ExpiredToken => (
-                StatusCode::UNAUTHORIZED,
-                "JWT token has expired".to_string(),
-            ),
+            AppError::Internal(e) => {
+                tracing::error!(internal_error = e, "Internal error occurred");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    ErrorResponse::new(user_message),
+                )
+            }
+            AppError::NotFound(_) => (StatusCode::NOT_FOUND, ErrorResponse::new(user_message)),
+            AppError::BadRequest(_) => (StatusCode::BAD_REQUEST, ErrorResponse::new(user_message)),
+            AppError::Unauthorized(_) => {
+                (StatusCode::UNAUTHORIZED, ErrorResponse::new(user_message))
+            }
+            AppError::Conflict(_) => (StatusCode::CONFLICT, ErrorResponse::new(user_message)),
+            AppError::Forbidden(_) => (StatusCode::FORBIDDEN, ErrorResponse::new(user_message)),
+            AppError::InvalidCredentials => {
+                (StatusCode::UNAUTHORIZED, ErrorResponse::new(user_message))
+            }
+            AppError::TokenCreation(e) => {
+                tracing::error!(token_error = e, "Token creation failed");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    ErrorResponse::new(user_message),
+                )
+            }
+            AppError::TokenValidation(_) | AppError::InvalidToken | AppError::ExpiredToken => {
+                (StatusCode::UNAUTHORIZED, ErrorResponse::new(user_message))
+            }
+            AppError::ValidationError(errors) => {
+                let details = serde_json::json!({
+                    "validationErrors": errors
+                });
+                (
+                    StatusCode::BAD_REQUEST,
+                    ErrorResponse::with_details(user_message, details),
+                )
+            }
         };
 
-        let body = serde_json::json!({"error": error_message});
-        (status, axum::Json(body)).into_response()
+        (status, Json(error_response)).into_response()
     }
 }
