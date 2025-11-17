@@ -13,7 +13,10 @@ use tower_sessions_sqlx_store::PostgresStore;
 use crate::{
     controller::{self, app_state::AppState},
     infra::{
-        middleware::{request_id::request_id_middleware, tracing::create_trace_layer},
+        middleware::{
+            error_handler::error_handler_middleware, request_id::request_id_middleware,
+            tracing::create_trace_layer,
+        },
         setup::init_tracing,
     },
 };
@@ -38,6 +41,7 @@ pub fn create_app(app_state: AppState, session: SessionManagerLayer<PostgresStor
         .nest("/api", controller::router())
         .with_state(app_state)
         .layer(create_trace_layer())
+        .layer(from_fn(error_handler_middleware))
         .layer(from_fn(request_id_middleware))
         .layer(session)
         .layer(cors)
