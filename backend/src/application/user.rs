@@ -207,7 +207,7 @@ impl UserUseCase {
             .user_persistence
             .get_user_by_id(user_id)
             .await?
-            .ok_or(AppError::NotFound)?;
+            .ok_or(AppError::NotFound("User not found".to_string()))?;
 
         let access_token = self.jwt_service.create_access_token(user_id, &user.email)?;
         let refresh_token = self
