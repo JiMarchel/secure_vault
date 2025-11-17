@@ -1,5 +1,5 @@
 use async_trait::async_trait;
-use tracing::{instrument, error};
+use tracing::{instrument};
 use uuid::Uuid;
 
 use crate::{
@@ -25,11 +25,7 @@ impl UserPersistence for PostgresPersistence {
                 .bind(email)
                 .fetch_one(&self.pool)
                 .await
-                .map_err(|e| {
-                    error!(error = %e, "Database error while creating user");
-                    AppError::from(e)
-                })?;
-
+                .map_err(|e| AppError::from(e))?;
         Ok(id)
     }
 
@@ -43,10 +39,7 @@ impl UserPersistence for PostgresPersistence {
             .bind(email)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| {
-                error!(error = %e, "Database error while fetching user by email");
-                AppError::from(e)
-            })?;
+            .map_err(|e| AppError::from(e))?;
 
         Ok(user)
     }
@@ -61,10 +54,7 @@ impl UserPersistence for PostgresPersistence {
             .bind(id)
             .fetch_optional(&self.pool)
             .await
-            .map_err(|e| {
-                error!(error = %e, "Database error while fetching user by id");
-                AppError::from(e)
-            })?;
+            .map_err(|e| AppError::from(e))?;
 
         Ok(user)
     }
@@ -79,10 +69,7 @@ impl UserPersistence for PostgresPersistence {
             .bind(id)
             .execute(&self.pool)
             .await
-            .map_err(|e| {
-                error!(error = %e, "Database error while updating email verification");
-                AppError::from(e)
-            })?;
+            .map_err(|e| AppError::from(e))?;
 
         Ok(())
     }
@@ -110,10 +97,7 @@ impl UserPersistence for PostgresPersistence {
         .bind(user_id)
         .execute(&self.pool)
         .await
-        .map_err(|e| {
-            error!(error = %e, "Database error while updating user identifier");
-            AppError::from(e)
-        })?;
+        .map_err(|e| AppError::from(e))?;
 
         Ok(())
     }
@@ -139,10 +123,7 @@ impl UserPersistence for PostgresPersistence {
         .bind(refresh_token)
         .execute(&self.pool)
         .await
-        .map_err(|e| {
-            error!(error = %e, "Database error while saving refresh token");
-            AppError::from(e)
-        })?;
+        .map_err(|e| AppError::from(e))?;
 
         Ok(())
     }
