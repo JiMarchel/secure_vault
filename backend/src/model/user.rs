@@ -8,7 +8,6 @@ pub struct SignUpResponse {
 #[derive(Serialize)]
 pub struct CheckSessionResponse {
     pub authenticated: bool,
-    pub message: Option<String>,
 }
 
 #[derive(Serialize, sqlx::FromRow)]
