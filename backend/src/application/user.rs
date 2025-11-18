@@ -6,9 +6,7 @@ use uuid::Uuid;
 
 use crate::{
     model::{
-        app_error::{AppError, AppResult},
-        jwt::AuthTokens,
-        user::{SignUpResponse, User},
+        app_error::{AppError, AppResult}, jwt::AuthTokens, response::SuccessResponse, user::{ User}
     },
     service::{
         email::EmailService,
@@ -16,7 +14,7 @@ use crate::{
         otp::{OtpGenerator, OtpPersistence},
         session::{insert_session, remove_session},
         user::UserPersistence,
-    },
+    }, validation::user::{ NewUserRequest},
 };
 
 pub struct UserUseCase {
@@ -54,7 +52,7 @@ impl UserUseCase {
         username: &str,
         email: &str,
         session: Session,
-    ) -> AppResult<SignUpResponse> {
+    ) -> AppResult<SuccessResponse<NewUserRequest>> {
         if let Some(user_exists) = self.user_persistence.get_user_by_email(email).await? {
             return self.handle_existing_user(user_exists, session).await;
         }
@@ -64,7 +62,8 @@ impl UserUseCase {
         self.send_verification_otp(user_id, email, username).await?;
 
         insert_session(session, "verif_otp", user_id).await?;
-        Ok(SignUpResponse {
+        Ok(SuccessResponse {
+            data: Some(NewUserRequest { username: username.to_string(), email: email.to_string() }),
             message: "created".to_string(),
         })
     }
@@ -78,11 +77,17 @@ impl UserUseCase {
         &self,
         user: User,
         session: Session,
-    ) -> AppResult<SignUpResponse> {
+    ) -> AppResult<SuccessResponse<NewUserRequest>> {
+        let user_request = NewUserRequest {
+            username: user.username.clone(),
+            email: user.email.clone(),
+        };
+
         if user.is_pending_otp_verification() {
             insert_session(session, "verif_otp", user.id).await?;
 
-            return Ok(SignUpResponse {
+            return Ok(SuccessResponse {
+                data: Some(user_request),
                 message: "verif_otp".to_string(),
             });
         }
@@ -92,7 +97,8 @@ impl UserUseCase {
 
             insert_session(session, "verif_password", user.id).await?;
 
-            return Ok(SignUpResponse {
+            return Ok(SuccessResponse {
+                data: Some(user_request),
                 message: "verif_password".to_string(),
             });
         }
@@ -112,7 +118,7 @@ impl UserUseCase {
         user_id: Uuid,
         email: &str,
         username: &str,
-    ) -> AppResult<()> {
+    ) -> AppResult<SuccessResponse<()>> {
         let otp_code = self.otp_generator.generate_otp();
         let expires_at = chrono::Utc::now() + chrono::Duration::minutes(10);
 
@@ -123,7 +129,10 @@ impl UserUseCase {
         self.email_service
             .send_email_async(email, username, &otp_code).await?;
 
-        Ok(())
+        Ok(SuccessResponse {
+            data: None,
+            message: "OTP sent".to_string(),
+        })
     }
 
     #[instrument(
@@ -136,7 +145,7 @@ impl UserUseCase {
         user_id: Uuid,
         email: &str,
         username: &str,
-    ) -> AppResult<()> {
+    ) -> AppResult<SuccessResponse<()>> {
         let otp_code = self.otp_generator.generate_otp();
         let expires_at = chrono::Utc::now() + chrono::Duration::minutes(10);
 
@@ -148,7 +157,10 @@ impl UserUseCase {
             .send_otp_email(email, username, &otp_code)
             .await?;
 
-        Ok(())
+        Ok(SuccessResponse {
+            data: None,
+            message: "OTP resent".to_string(),
+        })
     }
 
     #[instrument(
@@ -161,7 +173,7 @@ impl UserUseCase {
         user_id: Uuid,
         otp_code: &str,
         session: Session,
-    ) -> AppResult<()> {
+    ) -> AppResult<SuccessResponse<()>> {
         let otp_record = self.otp_persistence.get_otp_by_user_id(user_id).await?;
 
         if otp_record.otp_code != otp_code {
@@ -180,7 +192,10 @@ impl UserUseCase {
         remove_session(session.clone(), "verif_otp").await?;
         insert_session(session, "verif_password", user_id).await?;
 
-        Ok(())
+        Ok(SuccessResponse {
+            data: None,
+            message: "email_verified".to_string(),
+        })
     }
 
     #[instrument(
@@ -196,7 +211,7 @@ impl UserUseCase {
         argon2_params: String,
         user_id: Uuid,
         session: Session,
-    ) -> AppResult<AuthTokens> {
+    ) -> AppResult<SuccessResponse<AuthTokens>> {
         self.user_persistence
             .update_user_identifier(encrypted_dek, nonce, salt, argon2_params, user_id)
             .await?;
@@ -218,11 +233,14 @@ impl UserUseCase {
             .save_refresh_token(user_id, &refresh_token)
             .await?;
 
-        Ok(AuthTokens {
-            access_token,
-            refresh_token,
-            token_type: "Bearer".to_string(),
-            expires_in: 900,
+        Ok(SuccessResponse {
+            data: Some(AuthTokens {
+                access_token,
+                refresh_token,
+                token_type: "Bearer".to_string(),
+                expires_in: 900,
+            }),
+            message: "User identifier updated".to_string(),
         })
     }
 }
