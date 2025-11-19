@@ -25,3 +25,14 @@ pub async fn remove_session(session: Session, key: &str) -> AppResult<Option<Uui
         .await
         .map_err(|e| AppError::Internal(e.to_string()))
 }
+
+pub async fn get_any_session(session: Session, keys: &[&str]) -> AppResult<Uuid> {
+    for key in keys {
+        if let Ok(Some(value)) = session.get::<Uuid>(key).await {
+            return Ok(value);
+        }
+    }
+    Err(AppError::Unauthorized(
+        "Session not found or unauthorized".to_string(),
+    ))
+}
