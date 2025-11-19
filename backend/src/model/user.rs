@@ -1,9 +1,4 @@
-use serde::{Serialize};
-
-#[derive(Serialize)]
-pub struct SignUpResponse {
-    pub message: String,
-}
+use serde::{Deserialize, Serialize};
 
 #[derive(Serialize)]
 pub struct CheckSessionResponse {
@@ -11,16 +6,26 @@ pub struct CheckSessionResponse {
 }
 
 #[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
 pub struct User {
     pub id: uuid::Uuid,
     pub username: String,
     pub email: String,
-    pub encrypted_dek: Option<Vec<u8>>,
-    pub salt: Option<Vec<u8>>,
+    pub encrypted_dek: Option<String>,
+    pub salt: Option<String>,
     pub argon2_params: Option<String>,
     pub is_email_verified: bool,
-    pub nonce: Option<Vec<u8>>,
+    pub nonce: Option<String>,
     pub created_at: chrono::NaiveDateTime,
+}
+
+#[derive(Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct UserIndentifierPayload {
+    pub encrypted_dek: String,
+    pub salt: String,
+    pub nonce: String,
+    pub argon2_params: String,
 }
 
 impl User {
