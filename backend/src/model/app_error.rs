@@ -90,4 +90,10 @@ impl AppError {
     }
 }
 
+impl From<tower_sessions::session::Error> for AppError {
+    fn from(err: tower_sessions::session::Error) -> Self {
+        AppError::Internal(err.to_string())
+    }
+}
+
 pub type AppResult<T> = Result<T, AppError>;
