@@ -12,9 +12,9 @@ use crate::{
     application::user::UserUseCase,
     controller::app_state::AppState,
     model::{
-        app_error::{AppError, AppResult}, otp::{OtpRecord, VerifyOtp}, response::SuccessResponse, user::{CheckSessionResponse, User}
+        app_error::{AppError, AppResult}, jwt::AuthTokens, otp::{OtpRecord, VerifyOtpPayload}, response::SuccessResponse, user::{CheckSessionResponse, User, UserIndentifierPayload}
     },
-    service::session::get_session,
+    service::session::{get_any_session, get_session},
     validation::user::{NewUser, NewUserRequest},
 };
 
@@ -22,10 +22,12 @@ pub fn router() -> Router<AppState> {
     Router::new()
         .route("/sign-up", post(register))
         .route("/verify-otp", patch(verify_otp))
+        .route("/update-user-identifier", patch(update_user_identifier))
         .route("/session/get-me", get(get_current_user_with_session))
         .route("/session/resend-otp", patch(send_otp_with_session))
         .route("/session/get-otp", get(get_otp_with_session))
         .route("/check-session", get(check_session))
+        .route("/logout", post(logout))
 }
 
 #[instrument(
@@ -58,7 +60,7 @@ pub async fn register(
 pub async fn verify_otp(
     session: Session,
     State(user_use_case): State<Arc<UserUseCase>>,
-    Json(payload): Json<VerifyOtp>,
+    Json(payload): Json<VerifyOtpPayload>,
 ) -> AppResult<Json<SuccessResponse<()>>> {
     info!("Processing OTP verification");
     let user_id = get_session(session.clone(), "verif_otp").await?;
@@ -71,10 +73,21 @@ pub async fn verify_otp(
     Ok(Json(res))
 }
 
-// pub async fn update_user_identifier(
-//     State(user_use_case): State<Arc<UserUseCase>>,
-// ) -> AppResult<impl IntoResponse> {
-// }
+#[instrument(
+    name= "update_user_identifier", 
+    skip(session, user_use_case, payload), 
+)]
+pub async fn update_user_identifier(
+    session: Session,
+    State(user_use_case): State<Arc<UserUseCase>>,
+    Json(payload): Json<UserIndentifierPayload>
+) -> AppResult<Json<SuccessResponse<AuthTokens>>> {
+    let user_id = get_session(session.clone(), "verif_password").await?;
+    
+    let res = user_use_case.update_user_identifier(payload.encrypted_dek, payload.nonce, payload.salt, payload.argon2_params, user_id, session).await?;
+
+    Ok(Json(res))
+}
 
 #[instrument(
     name= "get_current_user_with_session", 
@@ -85,7 +98,7 @@ pub async fn get_current_user_with_session(
     State(user_use_case): State<Arc<UserUseCase>>,
 ) -> AppResult<Json<SuccessResponse<User>>> {
     info!("Fetching current user using session");
-    let user_id = get_session(session, "verif_otp").await?;
+    let user_id = get_any_session(session, &["verif_otp", "verif_password"]).await?;
 
     let user = user_use_case
         .user_persistence
@@ -193,4 +206,19 @@ pub async fn check_session(session: Session) -> AppResult<Json<SuccessResponse<C
             message: "No relevant session found".to_string(),
         }),
     )
+}
+
+#[instrument(
+    name= "logout", 
+    skip(session), 
+)]
+pub async fn logout(session: Session) -> AppResult<Json<SuccessResponse<()>>> {
+    info!("Processing logout");
+    session.flush().await?;
+
+    info!("Logout completed successfully");
+    Ok(Json(SuccessResponse {
+        data: None,
+        message: "Logout completed successfully".to_string(),
+    }))
 }
