@@ -7,9 +7,14 @@ async function initWasm() {
 
   try {
     console.log("Loading WASM module...");
-    // Import the WASM module - bundler target auto-initializes
-    wasmModule = await import("../../vault_wasm/pkg/vault_wasm.js");
-    
+    // Import the WASM module
+    const module = await import("../../vault_wasm/pkg/vault_wasm.js");
+
+    // Initialize the WASM module
+    await module.default();
+
+    wasmModule = module;
+
     console.log("WASM module loaded successfully");
     return wasmModule;
   } catch (error) {
@@ -27,20 +32,22 @@ export async function createUserIdentifier(masterPassword: string) {
     const wasm = await initWasm();
 
     if (!wasm.create_user_identifier) {
-      throw new Error("create_user_identifier function not found in WASM module");
+      throw new Error(
+        "create_user_identifier function not found in WASM module"
+      );
     }
 
     console.log("Calling create_user_identifier function...");
     const json = wasm.create_user_identifier(masterPassword);
     // console.log("WASM function returned:", json);
-    
+
     const result = JSON.parse(json) as {
-      encrypted_dek: string;
+      encryptedDek: string;
       nonce: string;
       salt: string;
-      argon2_params: string;
+      argon2Params: string;
     };
-    
+
     // console.log("Vault created successfully:", result);
     return result;
   } catch (error) {
