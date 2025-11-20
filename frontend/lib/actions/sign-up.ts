@@ -39,6 +39,7 @@ export async function signUpAction(
   }
 
   const setCookieHeader = response.headers.get("Set-Cookie");
+  console.log(setCookieHeader)
   if (setCookieHeader) {
     const cookieStore = await cookies();
     const cookieParts = setCookieHeader.split(";")[0].split("=");
