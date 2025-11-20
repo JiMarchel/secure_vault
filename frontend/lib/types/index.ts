@@ -29,7 +29,7 @@ export interface OtpVerifActionResponse {
 
 export interface VerifPasswordFormData {
   password?: string;
-  confirm_password?: string;
+  confirmPassword?: string;
 }
 
 export interface VerifPasswordActionResponse {
