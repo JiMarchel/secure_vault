@@ -3,14 +3,14 @@ import { OtpVerifActionResponse } from "../types";
 import { otpVerifSchema } from "../schemas/verif-otp";
 import z from "zod";
 import { redirect } from "next/navigation";
-import { getAuthSession } from "./get-session-cookie";
+import { getSession } from "./get-session-cookie";
+import { cookies } from "next/headers";
 
 export async function verifOtpAction(
   _: OtpVerifActionResponse | null,
   formData: FormData
 ): Promise<OtpVerifActionResponse> {
-  const authSession = await getAuthSession();
-  console.log(authSession)
+  const authSession = await getSession();
 
   const rawData = {
     otp_code: formData.get("otp_code") as string,
@@ -33,11 +33,28 @@ export async function verifOtpAction(
 
   if (!response.ok) {
     const res = await response.json();
-    console.log(res)
+    console.log(res);
     return {
       messageApi: res.error,
       inputs: { otp_code: rawData.otp_code },
     };
+  }
+
+  const setCookieHeader = response.headers.get("Set-Cookie");
+  if (setCookieHeader) {
+    const cookieStore = await cookies();
+    const cookieParts = setCookieHeader.split(";")[0].split("=");
+    const cookieName = cookieParts[0];
+    const cookieValue = cookieParts[1];
+
+    cookieStore.set({
+      name: cookieName,
+      value: cookieValue,
+      httpOnly: true,
+      path: "/",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24,
+    });
   }
 
   redirect("/auth/verif-password");
