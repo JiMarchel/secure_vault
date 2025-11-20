@@ -8,38 +8,40 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Field, FieldError, FieldLabel } from "@/components/ui/field";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { verifOtpAction } from "@/lib/actions/verif-otp";
-import { verifPasswordAction } from "@/lib/actions/verif-password";
 import { createUserIdentifier } from "@/lib/crypto/vault";
-import {
-  OtpVerifActionResponse,
-  VerifPasswordActionResponse,
-} from "@/lib/types";
-import { Eye, EyeClosed, ShieldCheck } from "lucide-react";
-import { useActionState, useState } from "react";
-
-let passwordInitialValue: VerifPasswordActionResponse = {};
+import { verifPasswordSchema } from "@/lib/schemas/verif-password";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { Eye, EyeClosed } from "lucide-react";
+import { useState } from "react";
+import { Controller, useForm } from "react-hook-form";
+import { z } from "zod";
 
 interface VerifPasswordCardProps {
-  id: string | undefined;
   username: string;
 }
 
-export const VerifPasswordCard = ({ id, username }: VerifPasswordCardProps) => {
-  const userIdentifier = createUserIdentifier("ASDasd123@").then((v) => v);
-  console.log({ userIdentifier });
+export const VerifPasswordCard = ({ username }: VerifPasswordCardProps) => {
+  const form = useForm<z.infer<typeof verifPasswordSchema>>({
+    resolver: zodResolver(verifPasswordSchema),
+    defaultValues: {
+      password: "",
+      confirmPassword: "",
+    },
+  });
+
+  const {
+    formState: { isSubmitting },
+  } = form;
+
+  async function onSubmit(data: z.infer<typeof verifPasswordSchema>) {
+    console.log(data);
+    const userIdentifier = await createUserIdentifier("ASDasd123@");
+    console.log(userIdentifier);
+  }
+
   const [isHidden, setIsHidden] = useState(true);
-  const [state, action, pending] = useActionState(
-    verifPasswordAction,
-    passwordInitialValue
-  );
-
-  const passwordError = state.errors?.password || "";
-  const confirmPasswordError = state.errors?.confirm_password || "";
-  const splitErrors = [...passwordError, ...confirmPasswordError];
-
 
   return (
     <div className="fixed top-1/2 left-1/2 -translate-y-1/2 -translate-x-1/2 w-xl bg-gray-50 shadow-2xl">
@@ -52,7 +54,7 @@ export const VerifPasswordCard = ({ id, username }: VerifPasswordCardProps) => {
             page until you have created your master password.
           </CardDescription>
         </CardHeader>
-        <form action={action} className="space-y-6">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
           <CardContent className="flex flex-col gap-2">
             <div className="bg-emerald-200 p-2 rounded-md">
               <p className="text-[0.850rem]">
@@ -65,45 +67,61 @@ export const VerifPasswordCard = ({ id, username }: VerifPasswordCardProps) => {
                 information like your name, birthday, or pet's name.
               </p>
             </div>
-            <input name="id" value={id} className="hidden" readOnly />
-            <Label>Master Password</Label>
-            <div className="flex gap-2">
-              <Input
-                type={isHidden ? "password" : "text"}
-                name="password"
-                placeholder="Enter your master password"
-                required
-                className="w-full"
-                disabled={pending}
-                defaultValue={state.inputs?.password}
-              />
-              <Button
-                size="icon"
-                onClick={() => setIsHidden(!isHidden)}
-                type="button"
-              >
-                {isHidden ? <EyeClosed /> : <Eye />}
-              </Button>
-            </div>
-            <Label>Confirm Master Password</Label>
-            <Input
-              type={isHidden ? "password" : "text"}
-              name="confirm_password"
-              placeholder="Confirm your master password"
-              required
-              className="w-full"
-              disabled={pending}
-              defaultValue={state.inputs?.confirm_password}
+            <Controller
+              name="password"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor="password">Master Password</FieldLabel>
+                  <div className="flex gap-2">
+                    <Input
+                      {...field}
+                      id="password"
+                      aria-invalid={fieldState.invalid}
+                      placeholder="Your master password here."
+                      autoComplete="off"
+                      type={isHidden ? "password" : "text"}
+                    />
+                    <Button
+                      size="icon"
+                      onClick={() => setIsHidden(!isHidden)}
+                      type="button"
+                    >
+                      {isHidden ? <EyeClosed /> : <Eye />}
+                    </Button>
+                  </div>
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
             />
-            {splitErrors.map((v: string) => (
-              <span key={v} className="text-red-500 text-sm">
-                {v}
-              </span>
-            ))}
+
+            <Controller
+              name="confirmPassword"
+              control={form.control}
+              render={({ field, fieldState }) => (
+                <Field data-invalid={fieldState.invalid}>
+                  <FieldLabel htmlFor="confirmPassword">
+                    Master Password
+                  </FieldLabel>
+                  <Input
+                    {...field}
+                    id="confirmPassword"
+                    aria-invalid={fieldState.invalid}
+                    placeholder="Confirm your master password here."
+                    autoComplete="off"
+                    type={isHidden ? "password" : "text"}
+                  />
+                  {fieldState.invalid && (
+                    <FieldError errors={[fieldState.error]} />
+                  )}
+                </Field>
+              )}
+            />
           </CardContent>
           <CardFooter className="flex flex-col justify-start items-start">
-            <span className="text-red-500">{state.messageApi}</span>
-            <Button type="submit" disabled={pending}>
+            <Button type="submit" disabled={isSubmitting}>
               Submit
             </Button>
           </CardFooter>
