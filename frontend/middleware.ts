@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
-import { checkUserSession } from "@/lib/query/check-session";
+import { checkUserSession } from "@/lib/services/check-session";
 
 export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   const cookieHeader = request.headers.get("cookie") || "";
 
-  const data = await checkUserSession(cookieHeader); 
+  const data = await checkUserSession(cookieHeader);
 
   if (data?.message === "verif_otp") {
     if (pathname !== "/auth/verif-otp") {
@@ -18,7 +18,7 @@ export async function middleware(request: NextRequest) {
         new URL("/auth/verif-password", request.url)
       );
     }
-  } else if (data?.authenticated) {
+  } else if (data?.data?.authenticated) {
     if (
       pathname === "/auth/verif-otp" ||
       pathname === "/auth/verif-password" ||
