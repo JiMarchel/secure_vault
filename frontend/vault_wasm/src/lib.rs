@@ -15,6 +15,7 @@ use zeroize::Zeroize;
 // wasm-pack build --release --target web --out-dir pkg
 
 #[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UserIdentifierPayload {
     pub encrypted_dek: String,
     pub nonce: String,
