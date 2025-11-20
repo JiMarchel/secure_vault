@@ -18,21 +18,20 @@ export const verifPasswordSchema = z
       .refine((val: string) => /[!@#$%^&*(),.?":{}|<>]/.test(val), {
         message: "Password must contain at least one special character.",
       }),
-    confirm_password: z
+    confirmPassword: z
       .string()
       .min(8, "Confirm password must be at least 8 characters long.")
       .max(100, "Confirm password must be at most 100 characters long."),
-    id: z.uuid("Invalid ID format."),
   })
   .superRefine(
     (
-      data: { password: string; confirm_password: string; id: string },
+      data: { password: string; confirmPassword: string },
       ctx: RefinementCtx
     ) => {
-      if (data.confirm_password !== data.password) {
+      if (data.confirmPassword !== data.password) {
         ctx.addIssue({
           code: "custom",
-          path: ["confirm_password"],
+          path: ["confirmPassword"],
           message: "Passwords do not match.",
         });
       }
