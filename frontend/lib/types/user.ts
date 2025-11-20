@@ -1,11 +1,20 @@
-export type UserType = {
+export interface UserResponse{
   id: string;
   username: string;
   email: string;
-  encrypted_dek: null | Array<number>;
+  encryptedDek: null | Array<number>;
   salt: null | Array<number>;
-  argon2_params: null | Array<string>;
-  is_email_verified: boolean;
+  argon2Params: null | Array<string>;
+  isEmailVerified: boolean;
   nonce: null | Array<number>;
-  created_at: string;
+  createdAt: string;
 };
+
+export interface CheckSessionResponse {
+  authenticated: boolean;
+}
+
+export interface OtpResponse {
+  otpCode: string;
+  otpExpiresAt: string;
+}
