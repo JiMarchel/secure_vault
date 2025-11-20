@@ -12,6 +12,7 @@ import {
 import { ShieldAlert } from "lucide-react";
 import Cookies from "js-cookie";
 import { useRouter } from "next/navigation";
+// import { userService } from "@/lib/services/user";
 
 export default function Error({
   error,
@@ -23,8 +24,8 @@ export default function Error({
   const err = error.message.split("&&");
   const router = useRouter();
 
-  function handleReset() {
-    Cookies.remove("sc-verif-otp");
+  async function handleReset() {
+    // await userService.logout();
     router.push("/");
   }
 
