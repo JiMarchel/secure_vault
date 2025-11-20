@@ -3,16 +3,18 @@ import { cookies } from "next/headers";
 import { VerifPasswordActionResponse } from "../types";
 import { verifPasswordSchema } from "../schemas/verif-password";
 import z from "zod";
+import { getSession } from "./get-session-cookie";
 
 export async function verifPasswordAction(
   _: VerifPasswordActionResponse,
   formData: FormData
 ): Promise<VerifPasswordActionResponse> {
   const cookieStore = await cookies();
+  const authSession = await getSession();
+  
   const rawData = {
     password: formData.get("password") as string,
     confirm_password: formData.get("confirm_password") as string,
-    id: cookieStore.get("sc-verif-password")?.value as string,
   };
 
   const validateFields = verifPasswordSchema.safeParse(rawData);
@@ -25,9 +27,6 @@ export async function verifPasswordAction(
   }
 
   console.log("Raw Data:", rawData);
-
-
-  const baseApiUrl = process.env.BASE_API_URL;
 
   return {
     // errors: {},
