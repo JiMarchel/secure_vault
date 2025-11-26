@@ -1,3 +1,0 @@
-[workspace]
-members = ["vault_wasm"]
-resolver = "2"
