@@ -11,17 +11,13 @@ pub async fn get_session(session: Session, key: &str) -> AppResult<Uuid> {
 }
 
 pub async fn insert_session(session: Session, key: &str, user_id: Uuid) -> AppResult<()> {
-    session
-        .insert(key, user_id)
-        .await?;
+    session.insert(key, user_id).await?;
 
     Ok(())
 }
 
 pub async fn remove_session(session: Session, key: &str) -> AppResult<Option<Uuid>> {
-    let uuid = session
-        .remove(key)
-        .await?;
+    let uuid = session.remove(key).await?;
 
     Ok(uuid)
 }
