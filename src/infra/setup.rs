@@ -48,10 +48,7 @@ pub fn init_tracing() {
     let filter = EnvFilter::try_from_default_env()
         .unwrap_or_else(|_| "info,backend=debug,tower_http=debug,sqlx=warn".into());
 
-    let console_layer = fmt::layer()
-        .with_target(true)
-        .with_level(true)
-        .pretty();
+    let console_layer = fmt::layer().with_target(true).with_level(true).pretty();
 
     tracing_subscriber::registry()
         .with(filter)
