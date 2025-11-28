@@ -7,7 +7,11 @@ use uuid::Uuid;
 
 use crate::{
     model::{
-        app_error::{AppError, AppResult}, jwt::AuthTokens, otp::OtpRecord, response::SuccessResponse, user::{CheckSessionResponse, User}
+        app_error::{AppError, AppResult},
+        jwt::AuthTokens,
+        otp::OtpRecord,
+        response::SuccessResponse,
+        user::{CheckSessionResponse, User},
     },
     service::{
         email::EmailService,
@@ -15,7 +19,8 @@ use crate::{
         otp::{OtpGenerator, OtpPersistence},
         session::{get_session, insert_session, remove_session},
         user::UserPersistence,
-    }, validation::user::NewUserRequest,
+    },
+    validation::user::NewUserRequest,
 };
 
 pub struct UserUseCase {
@@ -64,7 +69,10 @@ impl UserUseCase {
 
         insert_session(session, "verif_otp", user_id).await?;
         Ok(SuccessResponse {
-            data: Some(NewUserRequest { username: username.to_string(), email: email.to_string() }),
+            data: Some(NewUserRequest {
+                username: username.to_string(),
+                email: email.to_string(),
+            }),
             message: "created".to_string(),
         })
     }
@@ -128,7 +136,8 @@ impl UserUseCase {
             .await?;
 
         self.email_service
-            .send_email_async(email, username, &otp_code).await?;
+            .send_email_async(email, username, &otp_code)
+            .await?;
 
         Ok(SuccessResponse {
             data: None,
@@ -245,7 +254,7 @@ impl UserUseCase {
         })
     }
 
-        pub async fn get_user_by_email(&self, email: &str) -> AppResult<User> {
+    pub async fn get_user_by_email(&self, email: &str) -> AppResult<User> {
         self.user_persistence
             .get_user_by_email(email)
             .await?
@@ -263,7 +272,10 @@ impl UserUseCase {
         self.otp_persistence.get_otp_by_user_id(user_id).await
     }
 
-    pub async fn check_session_status(&self, session: Session) -> AppResult<SuccessResponse<CheckSessionResponse>> {
+    pub async fn check_session_status(
+        &self,
+        session: Session,
+    ) -> AppResult<SuccessResponse<CheckSessionResponse>> {
         if get_session(session.clone(), "verif_otp").await.is_ok() {
             return Ok(SuccessResponse {
                 data: Some(CheckSessionResponse {
@@ -289,10 +301,10 @@ impl UserUseCase {
             message: "No relevant session found".to_string(),
         })
     }
-    
+
     // #[instrument(
-    //     name= "use_case.login", 
-    //     skip(self, email), 
+    //     name= "use_case.login",
+    //     skip(self, email),
     //     fields(email=%email)
     // )]
     // pub async fn login(&self, email: &str) -> AppResult<SuccessResponse<AuthTokens>> {
