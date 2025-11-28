@@ -16,5 +16,5 @@ pub struct AuthTokens {
     pub refresh_token: String,
     pub token_type: String,
     /// seconds
-    pub expires_in: i64, 
+    pub expires_in: i64,
 }
