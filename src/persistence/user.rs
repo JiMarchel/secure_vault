@@ -1,12 +1,9 @@
 use async_trait::async_trait;
-use tracing::{instrument};
+use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    model::{
-        app_error::{AppResult},
-        user::User,
-    },
+    model::{app_error::AppResult, user::User},
     persistence::postgres::PostgresPersistence,
     service::user::UserPersistence,
 };
@@ -18,12 +15,14 @@ impl UserPersistence for PostgresPersistence {
         skip(self), 
         fields(email=%email, username=%username)
     )]
-    async fn create_user(&self, username: &str, email: &str) -> AppResult<Uuid> {        
-        Ok(sqlx::query_scalar("INSERT INTO users (username, email) VALUES($1, $2) RETURNING id")
-            .bind(username)
-            .bind(email)
-            .fetch_one(&self.pool)
-            .await?)
+    async fn create_user(&self, username: &str, email: &str) -> AppResult<Uuid> {
+        Ok(
+            sqlx::query_scalar("INSERT INTO users (username, email) VALUES($1, $2) RETURNING id")
+                .bind(username)
+                .bind(email)
+                .fetch_one(&self.pool)
+                .await?,
+        )
     }
 
     #[instrument(
@@ -32,10 +31,12 @@ impl UserPersistence for PostgresPersistence {
         fields(email=%email)
     )]
     async fn get_user_by_email(&self, email: &str) -> AppResult<Option<User>> {
-        Ok(sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = $1")
-            .bind(email)
-            .fetch_optional(&self.pool)
-            .await?)
+        Ok(
+            sqlx::query_as::<_, User>("SELECT * FROM users WHERE email = $1")
+                .bind(email)
+                .fetch_optional(&self.pool)
+                .await?,
+        )
     }
 
     #[instrument(
@@ -44,10 +45,12 @@ impl UserPersistence for PostgresPersistence {
         fields(user_id=%id)
     )]
     async fn get_user_by_id(&self, id: Uuid) -> AppResult<Option<User>> {
-        Ok(sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
-            .bind(id)
-            .fetch_optional(&self.pool)
-            .await?)
+        Ok(
+            sqlx::query_as::<_, User>("SELECT * FROM users WHERE id = $1")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?,
+        )
     }
 
     #[instrument(
