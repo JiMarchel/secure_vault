@@ -96,7 +96,7 @@ impl From<tower_sessions::session::Error> for AppError {
     }
 }
 
-impl From<sqlx::Error> for  AppError{
+impl From<sqlx::Error> for AppError {
     fn from(value: sqlx::Error) -> Self {
         AppError::Database(value.to_string())
     }
