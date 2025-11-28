@@ -26,10 +26,12 @@ pub struct ErrorDetail {
 
 impl<T: Serialize> SuccessResponse<T> {
     pub fn new(data: T, message: String) -> Self {
-        Self { data: Some(data), message }
+        Self {
+            data: Some(data),
+            message,
+        }
     }
 }
-
 
 impl ErrorResponse {
     pub fn new(message: String) -> Self {
