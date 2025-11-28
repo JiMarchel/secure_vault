@@ -40,7 +40,6 @@ impl SmtpEmailService {
 
 #[async_trait]
 impl EmailService for SmtpEmailService {
-
     #[instrument(
         name = "send_otp_email", 
         skip(self), 
@@ -82,14 +81,16 @@ impl EmailService for SmtpEmailService {
         let self_clone = self.clone();
 
         tokio::spawn(async move {
-            match self_clone.send_otp_email(&email, &username, &otp_code).await {
+            match self_clone
+                .send_otp_email(&email, &username, &otp_code)
+                .await
+            {
                 Ok(_) => {
                     info!("Email sent successfully to {}", email);
                 }
                 Err(e) => {
                     error!("Failed to send email to {}: {}", email, e);
                 }
-                
             }
         });
         Ok(())
