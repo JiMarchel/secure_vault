@@ -3,9 +3,7 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    model::{
-        app_error::{ AppResult}, otp::OtpRecord,
-    },
+    model::{app_error::AppResult, otp::OtpRecord},
     persistence::postgres::PostgresPersistence,
     service::otp::OtpPersistence,
 };
@@ -14,7 +12,7 @@ use crate::{
 impl OtpPersistence for PostgresPersistence {
     #[instrument(
         name= "persistence.create_otp", 
-        skip(self, code, expires_at), 
+         skip(self, code, expires_at), 
         fields(user_id=%user_id)
     )]
     async fn create_otp(
