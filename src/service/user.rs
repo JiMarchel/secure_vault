@@ -17,7 +17,4 @@ pub trait UserPersistence: Send + Sync {
         argon2_params: String,
         user_id: Uuid,
     ) -> AppResult<()>;
-
-    //Jwt things
-    async fn save_refresh_token(&self, user_id: Uuid, refresh_token: &str) -> AppResult<()>;
 }
