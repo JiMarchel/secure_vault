@@ -111,3 +111,65 @@ impl AsRef<str> for Email {
         &self.0
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_username_validation() {
+        assert!(Username::to_validation_error("valid_user").is_none());
+
+        let err = Username::to_validation_error("").unwrap();
+        assert_eq!(err.field, "username");
+        assert_eq!(err.message, "Username cannot be empty");
+
+        let long_name = "a".repeat(257);
+        let err = Username::to_validation_error(&long_name).unwrap();
+        assert_eq!(err.field, "username");
+        assert_eq!(err.message, "Username must be 256 characters or less");
+
+        let err = Username::to_validation_error("user/name").unwrap();
+        assert_eq!(err.field, "username");
+        assert_eq!(err.message, "Username contains forbidden characters");
+    }
+
+    #[test]
+    fn test_email_validation() {
+        assert!(Email::to_validation_error("test@example.com").is_none());
+
+        let err = Email::to_validation_error("invalid-email").unwrap();
+        assert_eq!(err.field, "email");
+        assert!(err.message.contains("not a valid email address"));
+    }
+
+    #[test]
+    fn test_new_user_request_conversion() {
+        let req = NewUserRequest {
+            username: "valid_user".to_string(),
+            email: "test@example.com".to_string(),
+        };
+        let result = NewUser::try_from(req);
+        assert!(result.is_ok());
+
+        let user = result.unwrap();
+        assert_eq!(user.username.as_ref(), "valid_user");
+        assert_eq!(user.email.as_ref(), "test@example.com");
+
+        let req = NewUserRequest {
+            username: "".to_string(),
+            email: "invalid".to_string(),
+        };
+        let result = NewUser::try_from(req);
+        assert!(result.is_err());
+
+        match result {
+            Err(AppError::ValidationError(errors)) => {
+                assert_eq!(errors.len(), 2);
+                assert!(errors.iter().any(|e| e.field == "username"));
+                assert!(errors.iter().any(|e| e.field == "email"));
+            }
+            _ => panic!("Expected ValidationError"),
+        }
+    }
+}
