@@ -1,3 +1,4 @@
+use async_trait::async_trait;
 use chrono::{Duration, Utc};
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, decode, encode};
 use uuid::Uuid;
@@ -6,6 +7,11 @@ use crate::model::{
     app_error::{AppError, AppResult},
     jwt::Claims,
 };
+
+#[async_trait]
+pub trait JwtPersistence: Send + Sync {
+    async fn create_refresh_token(&self, user_id: Uuid, email: &str) -> AppResult<()>;
+}
 
 pub struct JwtService {
     encoding_key: EncodingKey,
