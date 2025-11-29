@@ -41,8 +41,8 @@ impl SmtpEmailService {
 #[async_trait]
 impl EmailService for SmtpEmailService {
     #[instrument(
-        name = "send_otp_email", 
-        skip(self), 
+        name = "send_otp_email",
+        skip(self),
         fields(email = %email, username = %username)
     )]
     async fn send_otp_email(&self, email: &str, username: &str, otp_code: &str) -> AppResult<()> {
