@@ -11,8 +11,8 @@ use crate::{
 #[async_trait]
 impl UserPersistence for PostgresPersistence {
     #[instrument(
-        name= "persistence.create_user", 
-        skip(self), 
+        name= "persistence.create_user",
+        skip(self),
         fields(email=%email, username=%username)
     )]
     async fn create_user(&self, username: &str, email: &str) -> AppResult<Uuid> {
@@ -26,8 +26,8 @@ impl UserPersistence for PostgresPersistence {
     }
 
     #[instrument(
-        name= "persistence.get_user_by_email", 
-        skip(self), 
+        name= "persistence.get_user_by_email",
+        skip(self),
         fields(email=%email)
     )]
     async fn get_user_by_email(&self, email: &str) -> AppResult<Option<User>> {
@@ -54,8 +54,8 @@ impl UserPersistence for PostgresPersistence {
     }
 
     #[instrument(
-        name= "persistence.update_email_verification", 
-        skip(self), 
+        name= "persistence.update_email_verification",
+        skip(self),
         fields(user_id=%id)
     )]
     async fn update_email_verification(&self, id: Uuid) -> AppResult<()> {
@@ -68,8 +68,8 @@ impl UserPersistence for PostgresPersistence {
     }
 
     #[instrument(
-        name= "persistence.update_user_identifier", 
-        skip(self, encrypted_dek, nonce, salt, argon2_params), 
+        name= "persistence.update_user_identifier",
+        skip(self, encrypted_dek, nonce, salt, argon2_params),
         fields(user_id=%user_id)
     )]
     async fn update_user_identifier(
@@ -88,31 +88,6 @@ impl UserPersistence for PostgresPersistence {
         .bind(salt)
         .bind(argon2_params)
         .bind(user_id)
-        .execute(&self.pool)
-        .await?;
-
-        Ok(())
-    }
-
-    #[instrument(
-        name= "persistence.save_refresh_token", 
-        skip(self, refresh_token), 
-        fields(user_id=%user_id)
-    )]
-    async fn save_refresh_token(&self, user_id: Uuid, refresh_token: &str) -> AppResult<()> {
-        sqlx::query(
-            r#"
-            INSERT INTO refresh_tokens (user_id, token, expires_at)
-            VALUES ($1, $2, NOW() + INTERVAL '7 days')
-            ON CONFLICT (user_id)
-            DO UPDATE SET
-                token = EXCLUDED.token,
-                expires_at = EXCLUDED.expires_at,
-                updated_at = NOW()
-        "#,
-        )
-        .bind(user_id)
-        .bind(refresh_token)
         .execute(&self.pool)
         .await?;
 
