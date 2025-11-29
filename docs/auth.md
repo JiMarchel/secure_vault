@@ -1,0 +1,76 @@
+# Auth API
+
+## Register User
+
+Endpoint : POST /auth/sign-up
+
+Request Body :
+
+```json
+{
+  "username": "string",
+  "email": "string"
+}
+```
+
+Response Body Success :
+
+```json
+{
+  "data": {
+    "username": "string",
+    "email": "string"
+  },
+  "message": "created"
+}
+```
+
+## Verify OTP
+
+Endpoint : PATCH /auth/verify-otp
+
+Request Body :
+
+```json
+{
+  "otp_code": "string"
+}
+```
+
+Response Body Success :
+
+```json
+{
+  "data": null,
+  "message": "email_verified"
+}
+```
+
+## Update User Identifier
+
+Endpoint : PATCH /auth/update-user-identifier
+
+Request Body :
+
+```json
+{
+  "encrypted_dek": "string",
+  "salt": "string",
+  "nonce": "string",
+  "argon2_params": "string"
+}
+```
+
+Response Body Success :
+
+```json
+{
+  "data": {
+    "access_token": "string",
+    "refresh_token": "string",
+    "token_type": "Bearer",
+    "expires_in": 900
+  },
+  "message": "User identifier updated"
+}
+```
