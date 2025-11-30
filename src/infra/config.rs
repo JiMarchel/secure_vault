@@ -47,22 +47,22 @@ impl AppConfig {
 
         Self {
             smtp: SmtpConfig {
-                host: get_env("SMTP_HOST").unwrap(),
-                username: get_env("SMTP_USERNAME").unwrap(),
-                password: SecretBox::new(Box::new(get_env("SMTP_PASSWORD").unwrap())),
-                from_email: get_env("SMTP_FROM_EMAIL").unwrap(),
+                host: get_env("SMTP_HOST").expect("SMTP_HOST not found"),
+                username: get_env("SMTP_USERNAME").expect("SMTP_USERNAME not found"),
+                password: SecretBox::new(Box::new(get_env("SMTP_PASSWORD").expect("SMTP_PASSWORD not found"))),
+                from_email: get_env("SMTP_FROM_EMAIL").expect("SMTP_FROM_EMAIL not found"),
             },
             jwt: JwtConfig {
-                secret: SecretBox::new(Box::new(get_env("JWT_SECRET").unwrap())),
+                secret: SecretBox::new(Box::new(get_env("JWT_SECRET").expect("JWT_SECRET not found"))),
             },
             database: DatabaseConfig {
-                username: get_env("DATABASE_NAME").unwrap(),
-                database_name: get_env("DATABASE_USER").unwrap(),
-                password: SecretBox::new(Box::new(get_env("DATABASE_PASSWORD").unwrap())),
-                host: get_env("DATABASE_HOST").unwrap(),
-                port: get_env("DATABASE_PORT").unwrap().parse().unwrap(),
+                username: get_env("POSTGRES_USER").expect("POSTGRES_USER not found"),
+                database_name: get_env("POSTGRES_DB_NAME").expect("POSTGRES_DB_NAME not found"),
+                password: SecretBox::new(Box::new(get_env("POSTGRES_PASSWORD").expect("POSTGRES_PASSWORD not found"))),
+                host: get_env("DB_HOST").expect("DB_HOST not found"),
+                port: get_env("DB_PORT").expect("DB_PORT not found").parse().unwrap(),
             },
-            rust_log: get_env("RUST_LOG").unwrap(),
+            rust_log: get_env("RUST_LOG").expect("RUST_LOG not found"),
             environment,
         }
     }
@@ -77,6 +77,7 @@ fn get_env(key: &str) -> AppResult<String> {
 }
 
 impl DatabaseConfig {
+    /// When you not specify database name, it will use username as the name of the database
     pub fn without_db(&self) -> PgConnectOptions {
         PgConnectOptions::new()
             .host(&self.host)
