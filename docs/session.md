@@ -2,7 +2,7 @@
 
 ## Get Current User
 
-Endpoint : GET /session/get-me
+Endpoint : GET api/session/get-me
 
 Headers :
 - Cookie: auth_session = <verif_otp | verif_password>
@@ -29,7 +29,7 @@ Response Body Success :
 
 ## Resend OTP
 
-Endpoint : PATCH /session/resend-otp
+Endpoint : PATCH api/session/resend-otp
 
 Headers :
 - Cookie: auth_session = <verif_otp>
@@ -45,7 +45,7 @@ Response Body Success :
 
 ## Get OTP
 
-Endpoint : GET /session/get-otp
+Endpoint : GET api/session/get-otp
 
 Headers :
 - Cookie: auth_session = <verif_otp>
@@ -64,7 +64,7 @@ Response Body Success :
 
 ## Check Session
 
-Endpoint : GET /session/check-session
+Endpoint : GET api/session/check-session
 
 Headers :
 - Cookie: auth_session = <verif_otp | verif_password>
