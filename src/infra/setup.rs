@@ -1,69 +1,78 @@
-use tracing_subscriber::layer::SubscriberExt;
-use tracing_subscriber::util::SubscriberInitExt;
-use tracing_subscriber::{EnvFilter, fmt};
+use secrecy::ExposeSecret;
+use tower_sessions::cookie::SameSite;
+use tower_sessions::cookie::time::Duration;
+use tower_sessions::{Expiry, SessionManagerLayer};
+use tower_sessions_sqlx_store::PostgresStore;
 
 use crate::application::auth::AuthUseCase;
 use crate::application::otp::OtpUseCase;
 use crate::application::user::UserUseCase;
 use crate::controller::app_state::AppState;
 use crate::infra::config::AppConfig;
-use crate::infra::db::init_db;
+use crate::infra::db::get_connection_pool;
+use crate::infra::telemetry::{get_subscriber, init_subscriber};
 use crate::persistence::postgres::PostgresPersistence;
 use crate::service::email::SmtpEmailService;
 use crate::service::jwt::JwtService;
 use crate::service::otp::OtpService;
 use std::sync::Arc;
 
-pub async fn init_app_state() -> anyhow::Result<AppState> {
+pub struct AppDependencies {
+    pub state: AppState,
+    pub session_layer: SessionManagerLayer<PostgresStore>,
+}
+
+pub async fn init_app_state() -> anyhow::Result<AppDependencies> {
     let config = AppConfig::from_env();
-    
-    let pool = init_db().await?;
-    let persistence = Arc::new(PostgresPersistence::new(pool));
+
+    let pool = get_connection_pool(&config.database).await?;
+    let persistence = Arc::new(PostgresPersistence::new(pool.clone()));
+
+    let session_store = PostgresStore::new(pool.clone());
+    session_store.migrate().await?;
+
+    let session_layer = SessionManagerLayer::new(session_store)
+        .with_expiry(Expiry::OnInactivity(Duration::hours(24)))
+        .with_secure(config.is_production())
+        .with_name("auth_session")
+        .with_http_only(true)
+        .with_path("/")
+        .with_same_site(SameSite::Lax);
 
     let email_service = Arc::new(SmtpEmailService::new(
-        config.smtp_host.clone(),
-        config.smtp_username.clone(),
-        config.smtp_password.clone(),
-        config.smtp_from_email.clone(),
-    ));
-    
-    let jwt_service = Arc::new(JwtService::new(&config.jwt_secret.clone()));
-    
-    let otp_service = Arc::new(OtpService::new(
-        persistence.clone(),
-        email_service.clone(),
+        config.smtp.host.clone(),
+        config.smtp.username.clone(),
+        config.smtp.password.expose_secret().clone(),
+        config.smtp.from_email.clone(),
     ));
 
-    let user_use_case = Arc::new(UserUseCase::new(
-        persistence.clone(),
-    ));
-    
+    let jwt_service = Arc::new(JwtService::new(&config.jwt.secret.expose_secret().clone()));
+
+    let otp_service = Arc::new(OtpService::new(persistence.clone(), email_service.clone()));
+
+    let user_use_case = Arc::new(UserUseCase::new(persistence.clone()));
+
     let auth_use_case = Arc::new(AuthUseCase::new(
         persistence.clone(),
         persistence.clone(),
         jwt_service.clone(),
         otp_service.clone(),
     ));
-    
-    let otp_use_case = Arc::new(OtpUseCase::new(
-        otp_service.clone(),
-    ));
 
-    Ok(AppState {
-        user_use_case,
-        auth_use_case,
-        otp_use_case,
+    let otp_use_case = Arc::new(OtpUseCase::new(otp_service.clone()));
+
+    Ok(AppDependencies {
+        state: AppState {
+            user_use_case,
+            auth_use_case,
+            otp_use_case,
+        },
+        session_layer,
     })
 }
 
 pub fn init_tracing() {
-    let filter = EnvFilter::try_from_default_env()
-        .unwrap_or_else(|_| "info,backend=debug,tower_http=debug,sqlx=warn".into());
-
-    let console_layer = fmt::layer().with_target(true).with_level(true).pretty();
-
-    tracing_subscriber::registry()
-        .with(filter)
-        .with(console_layer)
-        .init()
+    let config = AppConfig::from_env();
+    let subscriber = get_subscriber(config.rust_log, std::io::stdout);
+    init_subscriber(subscriber);
 }
