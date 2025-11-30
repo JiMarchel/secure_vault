@@ -2,7 +2,7 @@
 
 ## Get User By Email
 
-Endpoint : POST /user/get-user-by-email
+Endpoint : POST api/user/get-user-by-email
 
 Request Body :
 
