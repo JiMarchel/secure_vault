@@ -1,3 +1,5 @@
+use std::sync::Once;
+
 use tracing::{Subscriber, subscriber::set_global_default};
 use tracing_subscriber::{
     EnvFilter, Registry,
@@ -16,11 +18,14 @@ where
         .with_level(true)
         .json()
         .with_writer(sink);
-
     Registry::default().with(filter).with(console_layer)
 }
 
+static INIT: Once = Once::new();
+
 pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) {
-    // Redirect all Log events into the subscriber
-    set_global_default(subscriber).expect("Failed to set subscriber");
+    INIT.call_once(|| {
+        set_global_default(subscriber)
+            .expect("Failed to set subscriber");
+    });
 }
