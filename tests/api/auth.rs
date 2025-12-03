@@ -39,3 +39,34 @@ async fn test_verify_otp_with_captured_code() {
     let user = app.get_user_by_email("example@gmail.com").await.unwrap();
     assert!(user.is_email_verified);
 }
+
+#[tokio::test]
+async fn test_resend_otp_sends_new_email() {
+    let app = spawn_app().await;
+
+    let response = app.sign_up("example", "example@gmail.com").await;
+    let cookies = response
+        .headers()
+        .get("set-cookie")
+        .map(|v| v.to_str().unwrap())
+        .unwrap();
+
+    let first_otp = app.email_service.get_otp_for_email("example@gmail.com").unwrap();
+
+    app.email_service.clear();
+
+    let response = reqwest::Client::new()
+        .patch(format!("{}/session/otp/resend", &app.address))
+        .header("Cookie", cookies)
+        .send()
+        .await
+        .expect("Failed to send request");
+
+    assert_eq!(response.status(), 200);
+
+    assert!(app.email_service.was_email_sent_to("example@gmail.com"));
+
+    let second_otp = app.email_service.get_otp_for_email("example@gmail.com").unwrap();
+
+    println!("First OTP: {}, Second OTP: {}", first_otp, second_otp);
+}
