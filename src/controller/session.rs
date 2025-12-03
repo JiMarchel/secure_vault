@@ -17,10 +17,10 @@ use crate::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/get-me", get(get_current_user_with_session))
-        .route("/resend-otp", patch(send_otp_with_session))
-        .route("/get-otp", get(get_otp_with_session))
-        .route("/check-session", get(check_session))
+        .route("/me", get(get_current_user_with_session))
+        .route("/otp/resend", patch(send_otp_with_session))
+        .route("/otp", get(get_otp_with_session))
+        .route("/check", get(check_session))
 }
 
 #[instrument(name = "get_current_user_with_session", skip(session, user_use_case))]
