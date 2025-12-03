@@ -1,6 +1,6 @@
 use std::sync::Arc;
 
-use axum::{Json, Router, extract::State, routing::post};
+use axum::{Json, Router, extract::State, routing::{get}};
 use tracing::{instrument};
 
 use crate::{
@@ -15,7 +15,7 @@ use crate::{
 };
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/get-user-by-email", post(get_user_by_email))
+    Router::new().route("/by-email", get(get_user_by_email))
 }
 
 #[instrument(
