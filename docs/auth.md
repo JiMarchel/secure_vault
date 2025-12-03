@@ -2,7 +2,7 @@
 
 ## Register User
 
-Endpoint : POST api/auth/sign-up
+Endpoint : POST api/auth/
 
 Request Body :
 
@@ -27,7 +27,7 @@ Response Body Success :
 
 ## Verify OTP
 
-Endpoint : PATCH api/auth/verify-otp
+Endpoint : PATCH api/auth/verif/otp
 
 Request Body :
 
@@ -48,7 +48,7 @@ Response Body Success :
 
 ## Update User Identifier
 
-Endpoint : PATCH api/auth/update-user-identifier
+Endpoint : PATCH api/auth/verif/identifier
 
 Request Body :
 
