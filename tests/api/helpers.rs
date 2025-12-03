@@ -11,7 +11,7 @@ use backend::{
         setup::AppDependencies,
         telemetry::{get_subscriber, init_subscriber},
     },
-    model::app_error::AppResult,
+    model::{app_error::AppResult, user::User},
     persistence::postgres::PostgresPersistence,
     service::{email::EmailService, jwt::JwtService, otp::OtpService},
 };
@@ -46,9 +46,9 @@ pub struct TestApp {
 }
 
 impl TestApp {
-    pub async fn sign_up(&self, username: String, email: String) -> reqwest::Response {
+    pub async fn sign_up(&self, username: &str, email: &str) -> reqwest::Response {
         reqwest::Client::new()
-            .post(format!("{}/api/auth/sign-up", &self.address))
+            .post(format!("{}/auth", &self.address))
             .json(&json!({
                 "username": username,
                 "email": email
@@ -56,6 +56,26 @@ impl TestApp {
             .send()
             .await
             .expect("Failed to send request")
+    }
+
+    pub async fn verify_otp(&self, otp_code: &str, cookies: &str) -> reqwest::Response {
+        reqwest::Client::new()
+            .patch(format!("{}/auth/verif/otp", self.address))
+            .header("Cookie", cookies)
+            .json(&json!({
+                "otp_code": otp_code
+            }))
+            .send()
+            .await
+            .expect("Failed to send request")
+    }
+
+    pub async fn get_user_by_email(&self, email: &str) -> Option<User> {
+        sqlx::query_as("SELECT * FROM users WHERE email = $1")
+            .bind(email)
+            .fetch_optional(&self.pool)
+            .await
+            .expect("Failed to query test")
     }
 }
 
@@ -88,7 +108,7 @@ pub async fn spawn_app() -> TestApp {
         .await
         .expect("Failed to bind port");
     let app_port = listener.local_addr().unwrap().port();
-    let address = format!("http://localhost:{}", app_port);
+    let address = format!("http://localhost:{}/api", app_port);
 
     tokio::spawn(async move {
         axum::serve(listener, app).await.unwrap();
