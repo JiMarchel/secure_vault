@@ -24,9 +24,9 @@ use crate::{
 
 pub fn router() -> Router<AppState> {
     Router::new()
-        .route("/sign-up", post(register))
-        .route("/verify-otp", patch(verify_otp))
-        .route("/update-user-identifier", patch(update_user_identifier))
+        .route("/", post(register))
+        .route("/verif/otp", patch(verify_otp))
+        .route("/verif/identifier", patch(update_user_identifier))
 }
 
 #[instrument(
