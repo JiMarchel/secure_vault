@@ -54,10 +54,10 @@ Request Body :
 
 ```json
 {
-  "encrypted_dek": "string",
+  "encryptedDek": "string",
   "salt": "string",
   "nonce": "string",
-  "argon2_params": "string"
+  "argon2Params": "string"
 }
 ```
 
