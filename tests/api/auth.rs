@@ -70,3 +70,22 @@ async fn test_resend_otp_sends_new_email() {
 
     println!("First OTP: {}, Second OTP: {}", first_otp, second_otp);
 }
+
+#[tokio::test]
+async fn test_with_invalid_field() {
+    let app = spawn_app().await;
+
+    let response = reqwest::Client::new().post(format!("{}/auth", app.address))
+        .json(&serde_json::json!({
+            "username": "",
+            "email": "not-an-email"
+        }))
+        .send()
+        .await
+        .expect("Failed to send request");
+
+    assert_eq!(response.status(), 400);
+
+    assert!(!app.email_service.was_email_sent_to("not-an-email"));
+    assert!(response.text().await.unwrap().contains("validationErrors"));
+}
