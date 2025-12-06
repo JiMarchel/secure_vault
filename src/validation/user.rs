@@ -66,12 +66,15 @@ impl TryFrom<EmailString> for Email {
 impl Username {
     pub fn to_validation_error(s: &str) -> Option<ValidationErrorDetail> {
         let is_empty = s.trim().is_empty();
+        let minimal_3_chars = s.graphemes(true).count() < 3;
         let is_too_long = s.graphemes(true).count() > 256;
         let forbidden = ['/', '(', ')', '"', '<', '>', '\\', '{', '}'];
         let contains_forbidden = s.chars().any(|g| forbidden.contains(&g));
 
         let message = if is_empty {
             "Username cannot be empty"
+        } else if minimal_3_chars {
+            "Username must be at least 3 characters"
         } else if is_too_long {
             "Username must be 256 characters or less"
         } else if contains_forbidden {
