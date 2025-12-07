@@ -19,7 +19,6 @@ import { cn } from '@/lib/utils'
 import { signUp } from '@/validation/auth'
 import { APIError, withCatch } from '@/lib/error-handling'
 import { fetchAPI } from '@/lib/custom-fetch'
-import { clientEnv } from '@/validation/env'
 
 export const Navbar = () => {
   const location = useLocation()
@@ -39,7 +38,7 @@ export const Navbar = () => {
     onSubmit: async ({ value }) => {
       setIsSubmitting(true)
       const [error, result] = await withCatch(
-        fetchAPI(`${clientEnv.VITE_API_BASE_URL}/auth`, {
+        fetchAPI(`${import.meta.env.VITE_API_BASE_URL}/auth`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
