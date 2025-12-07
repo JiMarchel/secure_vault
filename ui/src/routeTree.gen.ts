@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as InternalErrorIndexRouteImport } from './routes/internal-error/index'
+import { Route as VerificationPasswordIndexRouteImport } from './routes/verification/password/index'
 import { Route as VerificationOtpIndexRouteImport } from './routes/verification/otp/index'
 
 const IndexRoute = IndexRouteImport.update({
@@ -23,6 +24,12 @@ const InternalErrorIndexRoute = InternalErrorIndexRouteImport.update({
   path: '/internal-error/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const VerificationPasswordIndexRoute =
+  VerificationPasswordIndexRouteImport.update({
+    id: '/verification/password/',
+    path: '/verification/password/',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const VerificationOtpIndexRoute = VerificationOtpIndexRouteImport.update({
   id: '/verification/otp/',
   path: '/verification/otp/',
@@ -33,30 +40,43 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/internal-error': typeof InternalErrorIndexRoute
   '/verification/otp': typeof VerificationOtpIndexRoute
+  '/verification/password': typeof VerificationPasswordIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/internal-error': typeof InternalErrorIndexRoute
   '/verification/otp': typeof VerificationOtpIndexRoute
+  '/verification/password': typeof VerificationPasswordIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/internal-error/': typeof InternalErrorIndexRoute
   '/verification/otp/': typeof VerificationOtpIndexRoute
+  '/verification/password/': typeof VerificationPasswordIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/internal-error' | '/verification/otp'
+  fullPaths:
+    | '/'
+    | '/internal-error'
+    | '/verification/otp'
+    | '/verification/password'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/internal-error' | '/verification/otp'
-  id: '__root__' | '/' | '/internal-error/' | '/verification/otp/'
+  to: '/' | '/internal-error' | '/verification/otp' | '/verification/password'
+  id:
+    | '__root__'
+    | '/'
+    | '/internal-error/'
+    | '/verification/otp/'
+    | '/verification/password/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   InternalErrorIndexRoute: typeof InternalErrorIndexRoute
   VerificationOtpIndexRoute: typeof VerificationOtpIndexRoute
+  VerificationPasswordIndexRoute: typeof VerificationPasswordIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -75,6 +95,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof InternalErrorIndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/verification/password/': {
+      id: '/verification/password/'
+      path: '/verification/password'
+      fullPath: '/verification/password'
+      preLoaderRoute: typeof VerificationPasswordIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/verification/otp/': {
       id: '/verification/otp/'
       path: '/verification/otp'
@@ -89,6 +116,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   InternalErrorIndexRoute: InternalErrorIndexRoute,
   VerificationOtpIndexRoute: VerificationOtpIndexRoute,
+  VerificationPasswordIndexRoute: VerificationPasswordIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
