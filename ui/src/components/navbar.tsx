@@ -25,6 +25,7 @@ export const Navbar = () => {
   const location = useLocation()
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [isOpen, setIsOpen] = useState(false);
   const navigate = useNavigate()
 
   const signUpForm = useAppForm({
@@ -60,10 +61,18 @@ export const Navbar = () => {
       }
 
       setIsSubmitting(false)
-      toast.success(result?.message, { duration: 5000 })
-      navigate({
-        to: '/verification/otp',
-      })
+      setIsOpen(false)
+      if (result?.message === "verif_password") {
+        toast.success("User already registered", { duration: 5000, description: "Please complete your password verification" })
+        navigate({
+          to: '/verification/password',
+        })
+      } else {
+        toast.success("User created", { duration: 5000, description: "Please complete your OTP verification" })
+        navigate({
+          to: '/verification/otp',
+        })
+      }
     },
   })
 
@@ -137,7 +146,7 @@ export const Navbar = () => {
             </DialogContent>
           </Dialog>
 
-          <Dialog>
+          <Dialog open={isOpen} onOpenChange={setIsOpen}>
             <DialogTrigger asChild>
               <Button
                 size="sm"
