@@ -1,4 +1,4 @@
-export interface UserResponse {
+export type User = {
   id: string;
   username: string;
   email: string;
@@ -8,4 +8,9 @@ export interface UserResponse {
   isEmailVerified: boolean;
   nonce?: string;
   createdAt: string;
+}
+
+export type Otp = {
+  otpCode: string;
+  otpExpiresAt: string
 }
