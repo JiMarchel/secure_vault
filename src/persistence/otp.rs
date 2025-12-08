@@ -3,7 +3,10 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    model::{app_error::AppResult, otp::OtpRecord},
+    model::{
+        app_error::AppResult,
+        otp::{OtpExpiresAt, OtpRecord},
+    },
     persistence::postgres::PostgresPersistence,
     service::otp::OtpPersistence,
 };
@@ -41,6 +44,20 @@ impl OtpPersistence for PostgresPersistence {
     async fn get_otp_by_user_id(&self, user_id: Uuid) -> AppResult<OtpRecord> {
         Ok(sqlx::query_as::<_, OtpRecord>(
             "SELECT otp_code, otp_expires_at FROM otp_verif WHERE user_id = $1",
+        )
+        .bind(user_id)
+        .fetch_one(&self.pool)
+        .await?)
+    }
+
+    #[instrument(
+        name= "persistence.get_otp_expire_by_user_id",
+        skip(self),
+        fields(user_id=%user_id)
+    )]
+    async fn get_otp_expire_by_user_id(&self, user_id: Uuid) -> AppResult<OtpExpiresAt> {
+        Ok(sqlx::query_as::<_, OtpExpiresAt>(
+            "SELECT otp_expires_at FROM otp_verif WHERE user_id = $1",
         )
         .bind(user_id)
         .fetch_one(&self.pool)
