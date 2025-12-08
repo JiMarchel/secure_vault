@@ -1,4 +1,5 @@
 import { createFormHook, createFormHookContexts } from '@tanstack/react-form'
+import { REGEXP_ONLY_DIGITS } from 'input-otp'
 import {
   Field,
   FieldContent,
@@ -7,13 +8,19 @@ import {
   FieldLabel,
 } from './field'
 import { Input } from './input'
+import {
+  InputOTP,
+  InputOTPGroup,
+  InputOTPSeparator,
+  InputOTPSlot,
+} from './input-otp'
 import type { ReactNode } from 'react'
 
 const { fieldContext, formContext, useFieldContext, useFormContext } =
   createFormHookContexts()
 
 type FormControlProps = {
-  label: string
+  label?: string
   description?: string
 }
 
@@ -64,7 +71,7 @@ export function FormBase({
   )
 }
 
-export function FormInput(props: FormControlProps) {
+function FormInput(props: FormControlProps) {
   const field = useFieldContext<string>()
   const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
 
@@ -77,8 +84,40 @@ export function FormInput(props: FormControlProps) {
         onBlur={field.handleBlur}
         onChange={(e) => field.handleChange(e.target.value)}
         aria-invalid={isInvalid}
-        placeholder={`Enter your ${props.label.toLocaleLowerCase()}`}
+        placeholder={`Enter your ${props.label?.toLocaleLowerCase()}`}
       />
+    </FormBase>
+  )
+}
+
+function OtpInput(props: FormControlProps) {
+  const field = useFieldContext<string>()
+  const isInvalid = field.state.meta.isTouched && !field.state.meta.isValid
+
+  return (
+    <FormBase {...props}>
+      <InputOTP
+        maxLength={6}
+        pattern={REGEXP_ONLY_DIGITS}
+        aria-invalid={isInvalid}
+        id={field.name}
+        name={field.name}
+        value={field.state.value}
+        onChange={(value) => field.handleChange(value)}
+        onBlur={field.handleBlur}
+      >
+        <InputOTPGroup>
+          <InputOTPSlot index={0} />
+          <InputOTPSlot index={1} />
+          <InputOTPSlot index={2} />
+        </InputOTPGroup>
+        <InputOTPSeparator />
+        <InputOTPGroup>
+          <InputOTPSlot index={3} />
+          <InputOTPSlot index={4} />
+          <InputOTPSlot index={5} />
+        </InputOTPGroup>
+      </InputOTP>
     </FormBase>
   )
 }
@@ -86,6 +125,7 @@ export function FormInput(props: FormControlProps) {
 const { useAppForm } = createFormHook({
   fieldComponents: {
     Input: FormInput,
+    Otp: OtpInput,
   },
   formComponents: {},
   fieldContext,
