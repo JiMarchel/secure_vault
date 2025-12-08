@@ -11,15 +11,21 @@ use tracing::instrument;
 use crate::{
     application::{auth::AuthUseCase, otp::OtpUseCase, user::UserUseCase},
     controller::app_state::AppState,
-    model::{app_error::AppResult, otp::OtpRecord, response::SuccessResponse, user::{CheckSessionResponse, User}},
+    model::{
+        app_error::AppResult,
+        otp::{OtpExpiresAt, OtpRecord},
+        response::SuccessResponse,
+        user::{CheckSessionResponse, User},
+    },
     service::session::{get_any_session, get_session},
 };
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/me", get(get_current_user_with_session))
-        .route("/otp/resend", patch(send_otp_with_session))
         .route("/otp", get(get_otp_with_session))
+        .route("/otp/expire", get(get_otp_expire_with_session))
+        .route("/otp/resend", patch(send_otp_with_session))
         .route("/check", get(check_session))
 }
 
@@ -68,6 +74,18 @@ pub async fn get_otp_with_session(
     let user_id = get_session(session, "verif_otp").await?;
 
     let res = otp_use_case.get_otp_by_user_id(user_id).await?;
+
+    Ok(Json(res))
+}
+
+#[instrument(name = "get_otp_expire_with_session", skip(session, otp_use_case))]
+pub async fn get_otp_expire_with_session(
+    session: Session,
+    State(otp_use_case): State<Arc<OtpUseCase>>,
+) -> AppResult<Json<SuccessResponse<OtpExpiresAt>>> {
+    let user_id = get_session(session, "verif_otp").await?;
+
+    let res = otp_use_case.get_otp_expire_by_user_id(user_id).await?;
 
     Ok(Json(res))
 }
