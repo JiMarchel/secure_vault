@@ -1,7 +1,11 @@
 import { useEffect, useState } from "react";
 
 export default function useCountDown() {
-  const [countdown, setCountdown] = useState(60);
+  const [countdown, setCountdown] = useState(0);
+
+  useEffect(() => {
+    setCountdown(60);
+  }, []);
 
   useEffect(() => {
     if (countdown <= 0) return;
