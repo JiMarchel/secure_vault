@@ -27,22 +27,6 @@ Response Body Success :
 }
 ```
 
-## Resend OTP
-
-Endpoint : PATCH api/session/otp/resend
-
-Headers :
-- Cookie: auth_session = <verif_otp>
-
-Response Body Success :
-
-```json
-{
-  "data": null,
-  "message": "Success resend otp"
-}
-```
-
 ## Get OTP
 
 Endpoint : GET api/session/otp
@@ -59,6 +43,41 @@ Response Body Success :
     "otp_expires_at": "timestamp"
   },
   "message": "OTP fetched successfully"
+}
+```
+
+## Get OTP
+
+Endpoint : GET api/session/otp/expire
+
+Headers :
+- Cookie: auth_session = <verif_otp>
+
+Response Body Success :
+
+```json
+{
+  "data": {
+    "otp_expires_at": "timestamp"
+  },
+  "message": "Success get otp expires"
+}
+```
+
+
+## Resend OTP
+
+Endpoint : PATCH api/session/otp/resend
+
+Headers :
+- Cookie: auth_session = <verif_otp>
+
+Response Body Success :
+
+```json
+{
+  "data": null,
+  "message": "Success resend otp"
 }
 ```
 
