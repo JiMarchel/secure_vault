@@ -11,3 +11,9 @@ pub struct OtpRecord {
     pub otp_code: String,
     pub otp_expires_at: chrono::DateTime<chrono::Utc>,
 }
+
+#[derive(Serialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct OtpExpiresAt {
+    pub otp_expires_at: chrono::DateTime<chrono::Utc>,
+}
