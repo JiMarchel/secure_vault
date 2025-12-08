@@ -3,6 +3,7 @@ use serde::{Deserialize, Serialize};
 #[derive(Serialize)]
 pub struct CheckSessionResponse {
     pub authenticated: bool,
+    pub state: String,
 }
 
 #[derive(Serialize, sqlx::FromRow)]
@@ -37,3 +38,4 @@ impl User {
         !self.is_email_verified
     }
 }
+
