@@ -1,4 +1,8 @@
-import { ClientOnly, createFileRoute } from '@tanstack/react-router'
+import {
+  ClientOnly,
+  createFileRoute,
+  useNavigate,
+} from '@tanstack/react-router'
 import { Mail } from 'lucide-react'
 import { toast } from 'sonner'
 import { useEffect, useState } from 'react'
@@ -66,6 +70,7 @@ function ExpirationStatus({ expiresAt }: { expiresAt: string | undefined }) {
 function RouteComponent() {
   const { user } = Route.useLoaderData()
   const queryClient = useQueryClient()
+  const navigate = useNavigate()
 
   const { data } = useQuery({
     queryKey: ['otp-record'],
@@ -98,6 +103,7 @@ function RouteComponent() {
     onSuccess: (dataResending) => {
       queryClient.invalidateQueries({ queryKey: ['otp-record'] })
       toast.success(dataResending.message, { duration: 5000 })
+      form.reset()
       start(60)
     },
   })
@@ -109,12 +115,18 @@ function RouteComponent() {
         {
           credentials: 'include',
           method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
           body: JSON.stringify(value),
         },
       )
     },
     onSuccess: () => {
       toast.success('OTP verified successfully!')
+      throw navigate({
+        to: '/verification/password',
+      })
     },
   })
 
@@ -124,13 +136,13 @@ function RouteComponent() {
 
   const form = useAppForm({
     defaultValues: {
-      otpCode: '',
+      otp_code: '',
     },
     validators: {
       onSubmit: otpVerification,
     },
     onSubmit: ({ value }) => {
-      console.log(value)
+      mutateOtpVerif(value)
     },
   })
 
@@ -176,12 +188,12 @@ function RouteComponent() {
             <Badge className="px-2 py-1">
               <Mail /> {user?.email}
             </Badge>
-            <div className='max-w-xs w-full'>
-            <FieldGroup>
-              <form.AppField name="otpCode">
-                {(field) => <field.Otp />}
-              </form.AppField>
-            </FieldGroup>
+            <div className="max-w-xs w-full">
+              <FieldGroup>
+                <form.AppField name="otp_code">
+                  {(field) => <field.Otp />}
+                </form.AppField>
+              </FieldGroup>
             </div>
           </CardContent>
 
@@ -200,7 +212,11 @@ function RouteComponent() {
               Please enter the OTP code sent to your email.
             </span>
 
-            <Button type="submit" disabled={isPendingOtpVerif || isExpired} className='cursor-pointer'>
+            <Button
+              type="submit"
+              disabled={isPendingOtpVerif || isExpired}
+              className="cursor-pointer"
+            >
               {isPendingOtpVerif ? (
                 <>
                   <span className="animate-spin mr-2">⏳</span>
