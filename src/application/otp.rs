@@ -4,7 +4,11 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    model::{app_error::AppResult, otp::OtpRecord, response::SuccessResponse},
+    model::{
+        app_error::AppResult,
+        otp::{OtpExpiresAt, OtpRecord},
+        response::SuccessResponse,
+    },
     service::otp::OtpService,
 };
 
@@ -14,9 +18,7 @@ pub struct OtpUseCase {
 
 impl OtpUseCase {
     pub fn new(otp_service: Arc<OtpService>) -> Self {
-        Self {
-            otp_service,
-        }
+        Self { otp_service }
     }
 
     #[instrument(
@@ -29,7 +31,9 @@ impl OtpUseCase {
         username: &str,
         email: &str,
     ) -> AppResult<SuccessResponse<()>> {
-        self.otp_service.send_verification(user_id, username, email).await?;
+        self.otp_service
+            .send_verification(user_id, username, email)
+            .await?;
 
         Ok(SuccessResponse {
             data: None,
@@ -47,8 +51,9 @@ impl OtpUseCase {
         username: &str,
         email: &str,
     ) -> AppResult<SuccessResponse<()>> {
-
-        self.otp_service.resend_verification(user_id, username, email).await?;
+        self.otp_service
+            .resend_verification(user_id, username, email)
+            .await?;
 
         Ok(SuccessResponse {
             data: None,
@@ -56,16 +61,26 @@ impl OtpUseCase {
         })
     }
 
-    #[instrument(
-        name = "use_case.get_otp_by_user_id",
-        skip(self, user_id)
-    )]
+    #[instrument(name = "use_case.get_otp_by_user_id", skip(self, user_id))]
     pub async fn get_otp_by_user_id(&self, user_id: Uuid) -> AppResult<SuccessResponse<OtpRecord>> {
         let otp_record = self.otp_service.get_otp_by_user_id(user_id).await?;
 
         Ok(SuccessResponse {
             data: Some(otp_record),
             message: "Success get otp by user id".into(),
+        })
+    }
+
+    #[instrument(name = "use_case.get_otp_expire_by_user_id", skip(self, user_id))]
+    pub async fn get_otp_expire_by_user_id(
+        &self,
+        user_id: Uuid,
+    ) -> AppResult<SuccessResponse<OtpExpiresAt>> {
+        let otp_expires = self.otp_service.get_otp_expire_by_user_id(user_id).await?;
+
+        Ok(SuccessResponse {
+            data: Some(otp_expires),
+            message: "Success get otp expires".to_string(),
         })
     }
 }
