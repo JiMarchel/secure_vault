@@ -143,7 +143,7 @@ impl AuthUseCase {
 
         Ok(SuccessResponse {
             data: None,
-            message: "email_verified".to_string(),
+            message: "Verified Otp success!".to_string(),
         })
     }
 
