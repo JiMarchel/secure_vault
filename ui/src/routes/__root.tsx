@@ -1,12 +1,18 @@
-import { HeadContent, Scripts, createRootRoute } from '@tanstack/react-router'
+import { HeadContent, Scripts, createRootRouteWithContext } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
 
+import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools'
 import appCss from '../styles.css?url'
+import type { QueryClient } from '@tanstack/react-query'
 import { Navbar } from '@/components/navbar'
 import { Toaster } from "@/components/ui/sonner"
 
-export const Route = createRootRoute({
+interface MyRouterContext {
+  queryClient: QueryClient
+}
+
+export const Route = createRootRouteWithContext<MyRouterContext>()({
   head: () => ({
     meta: [
       {
@@ -38,7 +44,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
         <HeadContent />
       </head>
       <body>
-        <Toaster richColors position='top-center'/>
+        <Toaster richColors position='top-center' />
         <Navbar />
         {children}
         <TanStackDevtools
@@ -50,6 +56,10 @@ function RootDocument({ children }: { children: React.ReactNode }) {
               name: 'Tanstack Router',
               render: <TanStackRouterDevtoolsPanel />,
             },
+            {
+              name: "Tanstack Query",
+              render: <ReactQueryDevtoolsPanel />
+            }
           ]}
         />
         <Scripts />
