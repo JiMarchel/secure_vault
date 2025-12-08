@@ -31,6 +31,8 @@ export const signUpMiddleware = createMiddleware({ type: "request" })
       }
     })
 
+    console.log("signUpMiddleware: ", res)
+
     const stateToPath: Record<string, string> = {
       'verif_otp': '/verification/otp',
       'verif_password': '/verification/password',
@@ -38,16 +40,12 @@ export const signUpMiddleware = createMiddleware({ type: "request" })
 
     const targetPath = stateToPath[res.data?.state || ''] || '/'
 
-    if (pathname !== targetPath && !isVerificationRoute) {
+    if (pathname !== targetPath) {
       throw redirect({ to: targetPath })
     }
 
-    // Jika di verification route tapi state tidak match, 
-    // biarkan tetap di route tersebut (mungkin sedang process)
     if (isVerificationRoute && pathname !== targetPath) {
-      // Log untuk debugging
       console.warn(`State mismatch: on ${pathname} but state suggests ${targetPath}`)
-      // Tetap allow access
     }
 
 
