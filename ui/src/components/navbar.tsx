@@ -1,5 +1,5 @@
 import { Eye, Shield } from 'lucide-react'
-import { Link, useLocation, useNavigate } from '@tanstack/react-router'
+import { Link, useLocation } from '@tanstack/react-router'
 import { useState } from 'react'
 import { toast } from 'sonner'
 import { Button } from './ui/button'
@@ -25,7 +25,6 @@ export const Navbar = () => {
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isOpen, setIsOpen] = useState(false);
-  const navigate = useNavigate()
 
   const signUpForm = useAppForm({
     defaultValues: {
@@ -61,16 +60,12 @@ export const Navbar = () => {
 
       setIsSubmitting(false)
       setIsOpen(false)
+
+      // Using window.location.href because cookie auth_session not set yet and middleware redirect us back
       if (result?.message === "verif_password") {
-        toast.success("User already registered", { duration: 5000, description: "Please complete your password verification" })
-        navigate({
-          to: '/verification/password',
-        })
+        window.location.href = '/verification/password'
       } else {
-        toast.success("User created", { duration: 5000, description: "Please complete your OTP verification" })
-        navigate({
-          to: '/verification/otp',
-        })
+        window.location.href = '/verification/otp'
       }
     },
   })
