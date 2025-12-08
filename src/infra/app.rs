@@ -32,6 +32,7 @@ pub fn create_app(app_state: AppState, session: SessionManagerLayer<PostgresStor
             Method::PUT,
             Method::DELETE,
             Method::OPTIONS,
+            Method::PATCH,
         ])
         .allow_headers([CONTENT_TYPE, ACCEPT, AUTHORIZATION])
         .expose_headers([SET_COOKIE])
