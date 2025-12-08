@@ -1,12 +1,13 @@
 import { Eye, Shield } from 'lucide-react'
 import { Link, useLocation } from '@tanstack/react-router'
 import { useState } from 'react'
-import { toast } from 'sonner'
+import { useMutation } from '@tanstack/react-query'
 import { Button } from './ui/button'
 import { Label } from './ui/label'
 import { Input } from './ui/input'
 import { FieldGroup } from './ui/field'
 import { useAppForm } from './ui/custom-form'
+import type { z } from 'zod'
 import {
   Dialog,
   DialogContent,
@@ -17,14 +18,36 @@ import {
 } from '@/components/ui/dialog'
 import { cn } from '@/lib/utils'
 import { signUp } from '@/validation/auth'
-import { APIError, withCatch } from '@/lib/error-handling'
 import { fetchAPI } from '@/lib/custom-fetch'
 
 export const Navbar = () => {
   const location = useLocation()
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isOpen, setIsOpen] = useState(false);
+  const [isOpen, setIsOpen] = useState(false)
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: async (value: z.infer<typeof signUp>) => {
+      const res = await fetchAPI(`${import.meta.env.VITE_API_BASE_URL}/auth`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        credentials: 'include',
+        body: JSON.stringify(value),
+      })
+
+      return res
+    },
+    onSuccess: (data) => {
+      setIsOpen(false)
+      // Using window.location.href because cookie auth_session not set yet and middleware redirect us back
+      if (data.message === 'verif_password') {
+        window.location.href = '/verification/password'
+      } else {
+        window.location.href = '/verification/otp'
+      }
+    },
+  })
 
   const signUpForm = useAppForm({
     defaultValues: {
@@ -34,39 +57,8 @@ export const Navbar = () => {
     validators: {
       onSubmit: signUp,
     },
-    onSubmit: async ({ value }) => {
-      setIsSubmitting(true)
-      const [error, result] = await withCatch(
-        fetchAPI(`${import.meta.env.VITE_API_BASE_URL}/auth`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          credentials: 'include',
-          body: JSON.stringify(value),
-        }),
-        [APIError],
-      )
-
-      if (error && error.status >= 400 && error.status < 500) {
-        toast.error(error.errorResponse.error.message, {
-          duration: 10000,
-          description: error.errorResponse.error.details?.validationErrors?.map(
-            (v) => <div key={v.field}>{v.message}</div>,
-          ),
-        })
-        return
-      }
-
-      setIsSubmitting(false)
-      setIsOpen(false)
-
-      // Using window.location.href because cookie auth_session not set yet and middleware redirect us back
-      if (result?.message === "verif_password") {
-        window.location.href = '/verification/password'
-      } else {
-        window.location.href = '/verification/otp'
-      }
+    onSubmit: ({ value }) => {
+      mutate(value)
     },
   })
 
@@ -174,10 +166,10 @@ export const Navbar = () => {
 
                 <Button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isPending}
                   className="w-full bg-primary hover:bg-primary/90"
                 >
-                  {isSubmitting ? 'Submitting...' : 'Get Started'}
+                  {isPending ? 'Submitting...' : 'Get Started'}
                 </Button>
               </form>
             </DialogContent>
