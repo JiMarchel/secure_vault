@@ -5,7 +5,10 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    model::{app_error::AppResult, otp::OtpRecord},
+    model::{
+        app_error::AppResult,
+        otp::{OtpExpiresAt, OtpRecord},
+    },
     service::email::EmailService,
 };
 
@@ -25,6 +28,7 @@ pub trait OtpPersistence: Send + Sync {
         expires_at: chrono::DateTime<chrono::Utc>,
     ) -> AppResult<()>;
     async fn delete_otp_by_user_id(&self, user_id: Uuid) -> AppResult<()>;
+    async fn get_otp_expire_by_user_id(&self, user_id: Uuid) -> AppResult<OtpExpiresAt>;
 }
 
 fn generate_otp() -> String {
@@ -97,18 +101,20 @@ impl OtpService {
         Ok(())
     }
 
-    #[instrument(
-            name = "service.get_otp_by_user_id",
-        skip(self, user_id)
-    )]
+    #[instrument(name = "service.get_otp_by_user_id", skip(self, user_id))]
     pub async fn get_otp_by_user_id(&self, user_id: Uuid) -> AppResult<OtpRecord> {
         Ok(self.otp_persistence.get_otp_by_user_id(user_id).await?)
     }
 
-    #[instrument(
-        name = "service.delete_otp_by_user_id",
-        skip(self, user_id)
-    )]
+    #[instrument(name = "service.get_otp_expire_by_user_id", skip(self, user_id))]
+    pub async fn get_otp_expire_by_user_id(&self, user_id: Uuid) -> AppResult<OtpExpiresAt> {
+        Ok(self
+            .otp_persistence
+            .get_otp_expire_by_user_id(user_id)
+            .await?)
+    }
+
+    #[instrument(name = "service.delete_otp_by_user_id", skip(self, user_id))]
     pub async fn delete_otp_by_user_id(&self, user_id: Uuid) -> AppResult<()> {
         self.otp_persistence.delete_otp_by_user_id(user_id).await
     }
