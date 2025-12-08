@@ -16,7 +16,7 @@ where
     let console_layer = fmt::layer()
         .with_target(true)
         .with_level(true)
-        .json()
+        .pretty()
         .with_writer(sink);
     Registry::default().with(filter).with(console_layer)
 }
@@ -25,7 +25,6 @@ static INIT: Once = Once::new();
 
 pub fn init_subscriber(subscriber: impl Subscriber + Send + Sync) {
     INIT.call_once(|| {
-        set_global_default(subscriber)
-            .expect("Failed to set subscriber");
+        set_global_default(subscriber).expect("Failed to set subscriber");
     });
 }
