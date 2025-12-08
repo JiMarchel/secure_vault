@@ -60,7 +60,6 @@ export const signUpMiddleware = createMiddleware({ type: "request" })
     return next({
       context: {
         user,
-        auth_session
       }
     })
   })
