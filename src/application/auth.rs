@@ -6,7 +6,10 @@ use uuid::Uuid;
 
 use crate::{
     model::{
-        app_error::{AppError, AppResult}, jwt::AuthTokens, response::SuccessResponse, user::{CheckSessionResponse, User}
+        app_error::{AppError, AppResult},
+        jwt::AuthTokens,
+        response::SuccessResponse,
+        user::{CheckSessionResponse, User},
     },
     service::{
         jwt::{JwtPersistence, JwtService},
@@ -70,10 +73,7 @@ impl AuthUseCase {
         })
     }
 
-    #[instrument(
-        name="use_case.handle_existing_user",
-        skip(self, user, session),
-    )]
+    #[instrument(name = "use_case.handle_existing_user", skip(self, user, session))]
     async fn handle_existing_user(
         &self,
         user: User,
@@ -86,7 +86,7 @@ impl AuthUseCase {
 
         if user.is_pending_otp_verification() {
             self.otp_service
-                .send_verification(user.id, &user.email, &user.username)
+                .resend_verification(user.id, &user.email, &user.username)
                 .await?;
 
             insert_session(session, "verif_otp", user.id).await?;
@@ -114,8 +114,8 @@ impl AuthUseCase {
     }
 
     #[instrument(
-        name= "use_case.verify_user_email",
-        skip(self, session, otp_code, user_id),
+        name = "use_case.verify_user_email",
+        skip(self, session, otp_code, user_id)
     )]
     pub async fn verify_user_email(
         &self,
@@ -193,25 +193,24 @@ impl AuthUseCase {
         })
     }
 
-
-    pub async fn check_session_status(
-        &self,
-        session: Session,
-    ) -> AppResult<CheckSessionResponse> {
+    pub async fn check_session_status(&self, session: Session) -> AppResult<CheckSessionResponse> {
         if get_session(session.clone(), "verif_otp").await.is_ok() {
             return Ok(CheckSessionResponse {
                 authenticated: false,
+                state: "verif_otp".to_string(),
             });
         }
 
         if get_session(session, "verif_password").await.is_ok() {
             return Ok(CheckSessionResponse {
                 authenticated: false,
+                state: "verif_password".to_string(),
             });
         }
 
         Ok(CheckSessionResponse {
             authenticated: false,
+            state: "".to_string(),
         })
     }
 }
