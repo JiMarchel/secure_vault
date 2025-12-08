@@ -9,5 +9,3 @@ export const signUp = z.object({
       'Sorry for now just support gmail address',
     ),
 })
-
-export type signUpType = z.infer<typeof signUp>
