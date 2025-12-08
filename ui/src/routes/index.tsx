@@ -3,9 +3,13 @@ import { createFileRoute } from '@tanstack/react-router'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { signUpMiddleware } from '@/middleware/signup'
 
 export const Route = createFileRoute('/')({
   component: App,
+  server: {
+    middleware: [signUpMiddleware]
+  }
 })
 
 function App() {
