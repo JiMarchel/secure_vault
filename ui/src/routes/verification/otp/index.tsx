@@ -9,7 +9,7 @@ import { useEffect, useState } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import type { otpExpiresAt } from '@/model/user'
 import type z from 'zod'
-import { otpVerification } from '@/validation/otp'
+import { verifOtp } from '@/validation/auth'
 import { Button } from '@/components/ui/button'
 import {
   Card,
@@ -109,7 +109,7 @@ function RouteComponent() {
   })
 
   const { mutate: mutateOtpVerif, isPending: isPendingOtpVerif } = useMutation({
-    mutationFn: async (value: z.infer<typeof otpVerification>) => {
+    mutationFn: async (value: z.infer<typeof verifOtp>) => {
       return await fetchAPI(
         `${import.meta.env.VITE_API_BASE_URL}/auth/verif/otp`,
         {
@@ -139,7 +139,7 @@ function RouteComponent() {
       otp_code: '',
     },
     validators: {
-      onSubmit: otpVerification,
+      onSubmit: verifOtp,
     },
     onSubmit: ({ value }) => {
       mutateOtpVerif(value)
