@@ -22,6 +22,7 @@ const { fieldContext, formContext, useFieldContext, useFormContext } =
 type FormControlProps = {
   label?: string
   description?: string
+  type?: string
 }
 
 type FormBaseProps = FormControlProps & {
@@ -85,6 +86,7 @@ function FormInput(props: FormControlProps) {
         onChange={(e) => field.handleChange(e.target.value)}
         aria-invalid={isInvalid}
         placeholder={`Enter your ${props.label?.toLocaleLowerCase()}`}
+        type={props.type}
       />
     </FormBase>
   )
