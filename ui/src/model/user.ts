@@ -13,3 +13,10 @@ export type User = {
 export type otpExpiresAt = {
   otpExpiresAt: string
 }
+
+export type Identifier = {
+  encryptedDek: string;
+  nonce: string;
+  salt: string;
+  argon2Params: string;
+}
