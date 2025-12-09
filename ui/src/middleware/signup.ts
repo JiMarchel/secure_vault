@@ -31,8 +31,6 @@ export const signUpMiddleware = createMiddleware({ type: "request" })
       }
     })
 
-    console.log("signUpMiddleware: ", res)
-
     const stateToPath: Record<string, string> = {
       'verif_otp': '/verification/otp',
       'verif_password': '/verification/password',
