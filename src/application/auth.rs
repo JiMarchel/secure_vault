@@ -161,35 +161,28 @@ impl AuthUseCase {
         user_id: Uuid,
         session: Session,
     ) -> AppResult<SuccessResponse<AuthTokens>> {
-        tracing::debug!("Starting update_user_identifier");
 
-        tracing::debug!("Updating user identifier in database");
         self.user_persistence
             .update_user_identifier(encrypted_dek, nonce, salt, argon2_params, user_id)
             .await?;
 
-        tracing::debug!("Removing verif_password session");
         remove_session(session, "verif_password").await?;
 
-        tracing::debug!("Fetching updated user");
         let user = self
             .user_persistence
             .get_user_by_id(user_id)
             .await?
             .ok_or(AppError::NotFound("User not found".to_string()))?;
 
-        tracing::debug!("Creating JWT tokens");
         let access_token = self.jwt_service.create_access_token(user_id, &user.email)?;
         let refresh_token = self
             .jwt_service
             .create_refresh_token(user_id, &user.email)?;
 
-        tracing::debug!("Persisting refresh token");
         self.jwt_persistence
             .create_refresh_token(user_id, &refresh_token)
             .await?;
 
-        tracing::debug!("update_user_identifier completed successfully");
 
         Ok(SuccessResponse {
             data: Some(AuthTokens {
