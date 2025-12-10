@@ -14,6 +14,10 @@ use zeroize::Zeroize;
 // cargo install wasm-pack
 // wasm-pack build --release --target web --out-dir pkg
 
+// create diagram
+// write the create and unlock
+// refactor the code
+
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct UserIdentifier {
@@ -79,7 +83,7 @@ fn derive_master_key(master_password: &str, salt: &[u8], params: Params) -> [u8;
 
 
 #[wasm_bindgen]
-pub fn create_user_identifier(master_password: &str) -> String {
+pub fn encrypt_user_identifier(master_password: &str) -> String {
     let param = Params::new(64 * 1024, 3, 1, None).expect("Invalid argon2 params");
     let argon2_param_str = format_argon2_params(&param);
 
@@ -100,6 +104,7 @@ pub fn create_user_identifier(master_password: &str) -> String {
         msg: &dek,
         aad: aad_bytes(),
     };
+
     let encrypted = chiper.encrypt(nonce, payload).expect("Encrypt failed");
 
     let mut key_for_zeroize = master_key;
@@ -116,27 +121,8 @@ pub fn create_user_identifier(master_password: &str) -> String {
     serde_json::to_string(&vp).expect("Serialize failed")
 }
 
-
-/// FUNCTION 2: Unlock Vault (Login)
-/// 
-/// Dipanggil saat user login dengan master password.
-/// 
-/// Input: 
-/// - master_password: Password yang diinput user
-/// - vault_data_json: Data vault dari backend (JSON string)
-/// 
-/// Output: JSON string berisi {success, dek}
-/// - success: true jika password benar, false jika salah
-/// - dek: Base64 encoded DEK (jika success)
-/// 
-/// Process:
-/// 1. Parse vault data dari backend
-/// 2. Derive master key dari password + salt
-/// 3. Try decrypt DEK dengan master key
-/// 4. Jika decrypt berhasil = password benar ✅
-/// 5. Jika decrypt gagal = password salah ❌
 #[wasm_bindgen]
-pub fn unlock_vault(master_password: &str, vault_data_json: &str) -> String {
+pub fn decrypt_user_identifier(master_password: &str, vault_data_json: &str) -> String {
     // 1. Parse vault data dari JSON
     let vault_data: UserIdentifier = match serde_json::from_str(vault_data_json) {
         Ok(data) => data,
