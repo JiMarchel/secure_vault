@@ -5,7 +5,6 @@ import { TanStackDevtools } from '@tanstack/react-devtools'
 import { ReactQueryDevtoolsPanel } from '@tanstack/react-query-devtools'
 import appCss from '../styles.css?url'
 import type { QueryClient } from '@tanstack/react-query'
-import { Navbar } from '@/components/navbar'
 import { Toaster } from "@/components/ui/sonner"
 
 interface MyRouterContext {
@@ -45,7 +44,6 @@ function RootDocument({ children }: { children: React.ReactNode }) {
       </head>
       <body>
         <Toaster richColors position='top-center' />
-        <Navbar />
         {children}
         <TanStackDevtools
           config={{
