@@ -18,6 +18,11 @@ const config = defineConfig({
     tanstackStart(),
     viteReact(),
   ],
+  server: {
+    hmr: {
+      overlay: false, // Disable error overlay
+    },
+  },
 })
 
 export default config
