@@ -1,6 +1,9 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, useNavigate } from '@tanstack/react-router'
 import { useState } from 'react'
 import { Eye, EyeClosed } from 'lucide-react'
+import { useMutation } from '@tanstack/react-query'
+import { toast } from 'sonner'
+import type { SessionData } from '@/model/auth'
 import { signUpMiddleware } from '@/middleware/signup'
 import {
   Card,
@@ -13,8 +16,10 @@ import {
 import { Button } from '@/components/ui/button'
 import { useAppForm } from '@/components/ui/custom-form'
 import { verifPassword } from '@/validation/auth'
-import { createUserIdentifier } from '@/lib/enc-dex'
+import { createUserIdentifier } from '@/lib/enc-dec'
 import { FieldGroup } from '@/components/ui/field'
+import { fetchAPI } from '@/lib/custom-fetch'
+import { saveTokenToSessionFn } from '@/server/auth'
 
 export const Route = createFileRoute('/verification/password/')({
   server: {
@@ -29,7 +34,36 @@ export const Route = createFileRoute('/verification/password/')({
 function RouteComponent() {
   const { user } = Route.useLoaderData()
   const [isPasswordVisible, setIsPasswordVisible] = useState(false)
-  const isSubmitting = false
+  const navigate = useNavigate()
+
+  const { mutate, isPending } = useMutation({
+    mutationFn: async (password: string) => {
+      const ecnrypted = await createUserIdentifier(password)
+
+      const res = await fetchAPI<SessionData>(
+        `${import.meta.env.VITE_API_BASE_URL}/auth/verif/identifier`,
+        {
+          method: 'PATCH',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(ecnrypted),
+          credentials: 'include',
+        },
+      )
+
+      await saveTokenToSessionFn({
+        data: res.data!,
+      })
+    },
+    onSuccess: () => {
+      toast.success('Master password created successfully!');
+      cookieStore.delete('auth_session');
+      throw navigate({
+        to: "/dashboard"
+      })
+    }
+  })
 
   const form = useAppForm({
     validators: {
@@ -39,9 +73,8 @@ function RouteComponent() {
       password: '',
       confirmPassword: '',
     },
-    onSubmit: async ({ value }) => {
-      console.log('Password Data Submitted: ', value)
-      await createUserIdentifier(value.password)
+    onSubmit: ({ value }) => {
+      mutate(value.password)
     },
   })
 
@@ -77,7 +110,7 @@ function RouteComponent() {
             </div>
 
             <FieldGroup>
-              <div className='flex gap-2 '>
+              <div className="flex gap-2 ">
                 <form.AppField name="password">
                   {(field) => (
                     <field.Input
@@ -90,7 +123,7 @@ function RouteComponent() {
                   type="button"
                   size="icon"
                   onClick={() => setIsPasswordVisible(!isPasswordVisible)}
-                  className='mt-8'
+                  className="mt-8"
                 >
                   {isPasswordVisible ? <Eye /> : <EyeClosed />}
                 </Button>
@@ -106,7 +139,7 @@ function RouteComponent() {
             </FieldGroup>
           </CardContent>
           <CardFooter className="flex flex-col justify-start items-start">
-            <Button type="submit" disabled={isSubmitting}>
+            <Button type="submit" disabled={isPending}>
               Submit
             </Button>
           </CardFooter>
