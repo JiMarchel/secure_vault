@@ -88,5 +88,3 @@ pub async fn update_user_identifier(
 
     Ok(Json(res))
 }
-
-
