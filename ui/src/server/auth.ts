@@ -1,4 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
+import { setCookie } from '@tanstack/react-start/server'
 import { useAppSession } from '@/utils/session'
 
 export const saveTokenToSessionFn = createServerFn({ method: 'POST' })
@@ -18,6 +19,20 @@ export const saveTokenToSessionFn = createServerFn({ method: 'POST' })
       refresh_token: data.refresh_token,
       token_type: data.token_type,
       expires_in: data.expires_in,
+    })
+
+    return { success: true }
+  })
+
+export const deleteAuthSessionCookieFn = createServerFn({ method: 'POST' })
+  .handler(() => {
+    // Delete the auth_session cookie by setting it with expired date
+    setCookie('auth_session', '', {
+      httpOnly: true,
+      secure: true,
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0, // Immediately expire
     })
 
     return { success: true }
