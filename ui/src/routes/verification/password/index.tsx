@@ -16,10 +16,10 @@ import {
 import { Button } from '@/components/ui/button'
 import { useAppForm } from '@/components/ui/custom-form'
 import { verifPassword } from '@/validation/auth'
-import { createUserIdentifier } from '@/lib/enc-dec'
 import { FieldGroup } from '@/components/ui/field'
 import { fetchAPI } from '@/lib/custom-fetch'
-import { saveTokenToSessionFn } from '@/server/auth'
+import { deleteAuthSessionCookieFn, saveTokenToSessionFn } from '@/server/auth'
+import { encryptUserIdentifier } from '@/lib/wasm/vault'
 
 export const Route = createFileRoute('/verification/password/')({
   server: {
@@ -38,7 +38,7 @@ function RouteComponent() {
 
   const { mutate, isPending } = useMutation({
     mutationFn: async (password: string) => {
-      const ecnrypted = await createUserIdentifier(password)
+      const encrypted = await encryptUserIdentifier(password)
 
       const res = await fetchAPI<SessionData>(
         `${import.meta.env.VITE_API_BASE_URL}/auth/verif/identifier`,
@@ -47,7 +47,7 @@ function RouteComponent() {
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(ecnrypted),
+          body: JSON.stringify(encrypted),
           credentials: 'include',
         },
       )
@@ -56,13 +56,13 @@ function RouteComponent() {
         data: res.data!,
       })
     },
-    onSuccess: () => {
-      toast.success('Master password created successfully!');
-      cookieStore.delete('auth_session');
+    onSuccess: async () => {
+      toast.success('Master password created successfully!')
+      await deleteAuthSessionCookieFn()
       throw navigate({
-        to: "/dashboard"
+        to: '/dashboard',
       })
-    }
+    },
   })
 
   const form = useAppForm({
