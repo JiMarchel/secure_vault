@@ -15,7 +15,7 @@ async function initWasm(): Promise<WasmModule> {
   }
 
   try {
-    // Dynamic import dengan type casting
+    // Dynamic import with type casting
     const module =
       (await import('../../../enc_dec/pkg/enc_dec.js')) as unknown as WasmModule
 
@@ -23,11 +23,11 @@ async function initWasm(): Promise<WasmModule> {
     await module.default()
 
     wasmModule = module
-    console.log('✅ WASM module initialized')
+    console.log('WASM module initialized')
 
     return wasmModule
   } catch (error) {
-    console.error('❌ Failed to load WASM:', error)
+    console.error('Failed to load WASM:', error)
     throw new Error(`WASM initialization failed: ${error}`)
   }
 }
