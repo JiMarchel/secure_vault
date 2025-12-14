@@ -32,4 +32,14 @@ impl JwtPersistence for PostgresPersistence {
 
         Ok(())
     }
+
+    #[instrument(name = "persistence.delete_refresh_token", skip(self, user_id))]
+    async fn delete_refresh_token(&self, user_id: Uuid) -> AppResult<()> {
+        sqlx::query("DELETE FROM refresh_tokens WHERE user_id = $1")
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
+    }
 }
