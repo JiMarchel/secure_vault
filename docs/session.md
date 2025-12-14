@@ -93,7 +93,8 @@ Response Body Success :
 ```json
 {
   "data": {
-    "authenticated": false
+    "authenticated": false,
+    "state": "verif_otp" || "verif_password"
   },
   "message": "Session checked"
 }
