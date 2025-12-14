@@ -2,16 +2,21 @@
 import { useForm } from '@tanstack/vue-form';
 import { Mail } from 'lucide-vue-next';
 import { REGEXP_ONLY_DIGITS } from 'vue-input-otp';
+import { toast } from 'vue-sonner';
 import { Badge } from '~/components/ui/badge';
 import { Button } from '~/components/ui/button';
 import { Card, CardAction, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '~/components/ui/card';
 import { Field, FieldError, FieldGroup } from '~/components/ui/field';
+import { errorHelper } from '~/lib/error-helper';
 import type { User } from '~/utils/model/user';
 import { verifOtp } from '~/utils/validation/auth';
 
 definePageMeta({
     layout: "verif",
+    middleware: ["check-session", "signup"]
 })
+
+const config = useRuntimeConfig();
 
 const userData: User | undefined = inject("userData");
 // const refreshUserData = inject("refreshUserData")
@@ -55,8 +60,7 @@ async function resendOtp() {
 
     isResending.value = true
     try {
-        // TODO: panggil API resend OTP
-        // await $fetch('/api/auth/resend-otp', { method: 'POST' })
+        await $fetch(`${config.public.apiBaseUrl}/session/otp/resend`, { method: 'PATCH', credentials: 'include' })
 
         // Set countdown 60 detik & simpan timestamp expired
         resendCooldown.value = 60
@@ -68,6 +72,7 @@ async function resendOtp() {
         console.error('Failed to resend OTP:', error)
     } finally {
         isResending.value = false
+        toast.success('OTP has been resent to your email!')
     }
 }
 
@@ -79,8 +84,21 @@ const form = useForm({
         onSubmit: verifOtp
     },
     onSubmit: async ({ value }) => {
-        console.log(value)
-
+        try {
+            await $fetch(`${config.public.apiBaseUrl}/auth/verif/otp`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: value,
+                credentials: "include",
+            })
+        } catch (error) {
+            await errorHelper(error)
+        } finally {
+            toast.success('OTP verified successfully! Please create your master password.')
+            await navigateTo('/verif/password')
+        }
     },
 })
 
@@ -104,12 +122,19 @@ function isInvalid(field: any) {
                     you have verified your account.
                 </CardDescription>
                 <CardAction>
-                    <Button variant="link" type="button" :disabled="resendCooldown > 0 || isResending"
-                        @click="resendOtp">
-                        <span v-if="isResending">Sending...</span>
-                        <span v-else-if="resendCooldown > 0">Resend in {{ resendCooldown }}s</span>
-                        <span v-else>Resend OTP</span>
-                    </Button>
+                    <ClientOnly>
+                        <Button variant="link" type="button" :disabled="resendCooldown > 0 || isResending"
+                            @click="resendOtp">
+                            <span v-if="isResending">Sending...</span>
+                            <span v-else-if="resendCooldown > 0">Resend in {{ resendCooldown }}s</span>
+                            <span v-else>Resend OTP</span>
+                        </Button>
+                        <template #fallback>
+                            <Button variant="link" type="button" disabled>
+                                Loading...
+                            </Button>
+                        </template>
+                    </ClientOnly>
                 </CardAction>
             </CardHeader>
 
