@@ -11,6 +11,7 @@ use crate::model::{
 #[async_trait]
 pub trait JwtPersistence: Send + Sync {
     async fn create_refresh_token(&self, user_id: Uuid, email: &str) -> AppResult<()>;
+    async fn delete_refresh_token(&self, user_id: Uuid) -> AppResult<()>;
 }
 
 pub struct JwtService {
@@ -35,7 +36,7 @@ impl JwtService {
         let exp = now + self.access_token_duration;
 
         let claims = Claims {
-            sub: user_id.to_string(),
+            sub: user_id,
             exp: exp.timestamp(),
             iat: now.timestamp(),
             email: email.to_string(),
@@ -50,7 +51,7 @@ impl JwtService {
         let exp = now + self.refresh_token_duration;
 
         let claims = Claims {
-            sub: user_id.to_string(),
+            sub: user_id,
             exp: exp.timestamp(),
             iat: now.timestamp(),
             email: email.to_string(),
@@ -78,9 +79,6 @@ impl JwtService {
     pub fn get_user_id_from_token(&self, token: &str) -> AppResult<Uuid> {
         let claims = self.verify_token(token)?;
 
-        Ok(claims
-            .sub
-            .parse::<Uuid>()
-            .map_err(|e| AppError::TokenValidation(format!("Invalid user ID in token: {}", e)))?)
+        Ok(claims.sub)
     }
 }
