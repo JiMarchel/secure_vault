@@ -103,6 +103,11 @@ impl Email {
                 field: "email".to_string(),
                 message: format!("'{}' is not a valid email address", s),
             })
+        } else if !s.ends_with("@gmail.com") {
+            Some(ValidationErrorDetail {
+                field: "email".to_string(),
+                message: "Email must be a gmail.com address".to_string(),
+            })
         } else {
             None
         }
