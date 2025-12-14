@@ -160,8 +160,7 @@ impl AuthUseCase {
         argon2_params: String,
         user_id: Uuid,
         session: Session,
-    ) -> AppResult<SuccessResponse<AuthTokens>> {
-
+    ) -> AppResult<AuthTokens> {
         self.user_persistence
             .update_user_identifier(encrypted_dek, nonce, salt, argon2_params, user_id)
             .await?;
@@ -183,18 +182,24 @@ impl AuthUseCase {
             .create_refresh_token(user_id, &refresh_token)
             .await?;
 
-
-        Ok(SuccessResponse {
-            data: Some(AuthTokens {
-                access_token,
-                refresh_token,
-                token_type: "Bearer".to_string(),
-                expires_in: 900,
-            }),
-            message: "User identifier updated".to_string(),
+        Ok(AuthTokens {
+            access_token,
+            refresh_token,
         })
     }
 
+    #[instrument(name = "use_case.logout_user", skip(self, session))]
+    pub async fn logout_user(&self, session: Session, user_id: Uuid) -> AppResult<SuccessResponse<()>> {
+        self.jwt_persistence.delete_refresh_token(user_id).await?;
+        remove_session(session, "sv_auth").await?;
+
+        Ok(SuccessResponse {
+            data: None,
+            message: "Logged out successfully".to_string(),
+        })
+    }
+
+    #[instrument(name = "use_case.check_session_status", skip(self, session))]
     pub async fn check_session_status(&self, session: Session) -> AppResult<CheckSessionResponse> {
         if get_session(session.clone(), "verif_otp").await.is_ok() {
             return Ok(CheckSessionResponse {
