@@ -23,7 +23,6 @@ async function initWasm(): Promise<WasmModule> {
     await module.default()
 
     wasmModule = module
-    console.log('WASM module initialized')
 
     return wasmModule
   } catch (error) {
