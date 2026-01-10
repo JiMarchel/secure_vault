@@ -1,7 +1,10 @@
 export interface WasmModule {
   default: () => Promise<void>;
   encrypt_user_identifier: (masterPassword: string) => string;
-  decrypt_user_identifier: (masterPassword: string, vaultData: string) => string;
+  decrypt_user_identifier: (
+    masterPassword: string,
+    vaultData: string
+  ) => string;
   encrypt_vault_item: (dek: string, plaintext: string) => string;
   decrypt_vault_item: (dek: string, vaultItemJson: string) => string;
 }
