@@ -22,6 +22,11 @@ pub async fn remove_session(session: Session, key: &str) -> AppResult<Option<Uui
     Ok(uuid)
 }
 
+pub async fn destroy_session(session: Session) -> AppResult<()> {
+    session.flush().await?;
+    Ok(())
+}
+
 pub async fn get_any_session(session: Session, keys: &[&str]) -> AppResult<Uuid> {
     for key in keys {
         if let Ok(Some(value)) = session.get::<Uuid>(key).await {
