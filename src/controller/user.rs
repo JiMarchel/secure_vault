@@ -1,21 +1,23 @@
 use std::sync::Arc;
 
-use axum::{Json, Router, extract::State, routing::{get}};
-use tracing::{instrument};
+use axum::{Json, Router, extract::State, routing::get};
+use tracing::instrument;
 
 use crate::{
     application::user::UserUseCase,
     controller::app_state::AppState,
     model::{
-        app_error::{AppResult},
+        app_error::AppResult,
         response::SuccessResponse,
-        user::User,
+        user::{User, UserIdentifier},
     },
     validation::user::{Email, EmailString},
 };
 
 pub fn router() -> Router<AppState> {
-    Router::new().route("/by-email", get(get_user_by_email))
+    Router::new()
+        .route("/by-email", get(get_user_by_email))
+        .route("/identifier", get(get_user_identifier))
 }
 
 #[instrument(
@@ -28,9 +30,26 @@ pub async fn get_user_by_email(
     Json(payload): Json<EmailString>,
 ) -> AppResult<Json<SuccessResponse<User>>> {
     let email: Email = payload.try_into()?;
-    let user = user_use_case
-        .get_user_by_email(email.as_ref())
-        .await?;
+    let user = user_use_case.get_user_by_email(email.as_ref()).await?;
+
+    let res = SuccessResponse {
+        data: Some(user),
+        message: "User fetched successfully".to_string(),
+    };
+    Ok(Json(res))
+}
+
+#[instrument(
+    name = "get_user_identifier",
+    skip(user_use_case, payload),
+    fields(payload)
+)]
+pub async fn get_user_identifier(
+    State(user_use_case): State<Arc<UserUseCase>>,
+    Json(payload): Json<EmailString>,
+) -> AppResult<Json<SuccessResponse<UserIdentifier>>> {
+    let email: Email = payload.try_into()?;
+    let user = user_use_case.get_user_identifier(email.as_ref()).await?;
 
     let res = SuccessResponse {
         data: Some(user),
