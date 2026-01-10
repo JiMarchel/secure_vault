@@ -1,7 +1,10 @@
 use async_trait::async_trait;
 use uuid::Uuid;
 
-use crate::model::{app_error::AppResult, user::User};
+use crate::model::{
+    app_error::AppResult,
+    user::{User, UserIdentifier, UserInfo},
+};
 
 #[async_trait]
 pub trait UserPersistence: Send + Sync {
@@ -17,4 +20,6 @@ pub trait UserPersistence: Send + Sync {
         argon2_params: String,
         user_id: Uuid,
     ) -> AppResult<()>;
+    async fn get_user_identifier(&self, email: &str) -> AppResult<Option<UserIdentifier>>;
+    async fn get_user_info_by_email(&self, email: &str) -> AppResult<Option<UserInfo>>;
 }
