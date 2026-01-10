@@ -5,7 +5,7 @@ use unicode_segmentation::UnicodeSegmentation;
 pub struct Username(String);
 pub struct Email(String);
 
-#[derive(Deserialize)]
+#[derive(Deserialize, Debug)]
 pub struct EmailString {
     pub email: String,
 }
