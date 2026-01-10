@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{
     Json, Router,
     extract::State,
-    routing::{patch, post},
+    routing::{delete, patch, post},
 };
 use tower_sessions::Session;
 use tracing::instrument;
@@ -12,11 +12,14 @@ use crate::{
     application::auth::AuthUseCase,
     controller::app_state::AppState,
     model::{
-        app_error::AppResult, jwt::AuthTokens, otp::VerifyOtpPayload, response::SuccessResponse,
-        user::UserIndentifierPayload,
+        app_error::{AppError, AppResult},
+        jwt::{AuthTokens, Claims},
+        otp::VerifyOtpPayload,
+        response::SuccessResponse,
+        user::{UserIdentifier, UserInfo},
     },
-    service::session::get_session,
-    validation::user::{NewUser, NewUserRequest},
+    service::session::{destroy_session, get_session},
+    validation::user::{Email, EmailString, NewUser, NewUserRequest},
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use time::Duration;
@@ -26,10 +29,13 @@ pub fn router() -> Router<AppState> {
         .route("/", post(register))
         .route("/verif/otp", patch(verify_otp))
         .route("/verif/identifier", patch(update_user_identifier))
+        .route("/refresh", post(refresh))
+        .route("/logout", delete(logout))
+        .route("/login", post(login))
 }
 
 #[instrument(
-    name= "register_user",
+    name= "register",
     skip(session, auth_use_case, payload),
     fields(email=%payload.email, username=%payload.username)
 )]
@@ -45,6 +51,47 @@ pub async fn register(
         .await?;
 
     Ok(Json(res))
+}
+
+#[instrument(
+    name="login",
+    skip(auth_use_case, jar),
+    fields(email=%payload.email)
+)]
+pub async fn login(
+    jar: CookieJar,
+    State(auth_use_case): State<Arc<AuthUseCase>>,
+    Json(payload): Json<EmailString>,
+) -> AppResult<(CookieJar, Json<SuccessResponse<UserInfo>>)> {
+    let user_email: Email = payload.try_into()?;
+
+    let res = auth_use_case.login(user_email.as_ref()).await?;
+
+    let access_cookie = Cookie::build(("sv_at", res.1.access_token))
+        .max_age(Duration::minutes(15))
+        .http_only(true)
+        .secure(false)
+        .same_site(SameSite::Lax)
+        .path("/")
+        .build();
+
+    let refresh_cookie = Cookie::build(("sv_rt", res.1.refresh_token))
+        .max_age(Duration::days(7))
+        .http_only(true)
+        .secure(false)
+        .same_site(SameSite::Lax)
+        .path("/")
+        .build();
+
+    let jar = jar.add(access_cookie).add(refresh_cookie);
+
+    Ok((
+        jar,
+        Json(SuccessResponse {
+            data: Some(res.0),
+            message: "Login success".to_string(),
+        }),
+    ))
 }
 
 #[instrument(
@@ -66,24 +113,21 @@ pub async fn verify_otp(
     Ok(Json(res))
 }
 
+#[instrument(name = "logout_user", skip(jar, auth_use_case, claims))]
 pub async fn logout(
-    session: Session,
     jar: CookieJar,
+    claims: Claims,
     State(auth_use_case): State<Arc<AuthUseCase>>,
 ) -> AppResult<(CookieJar, Json<SuccessResponse<()>>)> {
-    let _ = auth_use_case.check_session_status(session); // Placeholder for actual logout logic if needed
+    let user_id = claims.sub;
+
+    let res = auth_use_case.logout_user(user_id).await?;
 
     let jar = jar
-        .remove(Cookie::from("access_token"))
-        .remove(Cookie::from("refresh_token"));
+        .remove(Cookie::build("sv_at").path("/").build())
+        .remove(Cookie::build("sv_rt").path("/").build());
 
-    Ok((
-        jar,
-        Json(SuccessResponse {
-            data: None,
-            message: "Logged out successfully".to_string(),
-        }),
-    ))
+    Ok((jar, Json(res)))
 }
 
 #[instrument(name = "update_user_identifier", skip(session, auth_use_case, payload))]
@@ -91,7 +135,7 @@ pub async fn update_user_identifier(
     session: Session,
     jar: CookieJar,
     State(auth_use_case): State<Arc<AuthUseCase>>,
-    Json(payload): Json<UserIndentifierPayload>,
+    Json(payload): Json<UserIdentifier>,
 ) -> AppResult<(CookieJar, Json<SuccessResponse<AuthTokens>>)> {
     let user_id = get_session(session.clone(), "verif_password").await?;
 
@@ -102,11 +146,13 @@ pub async fn update_user_identifier(
             payload.salt,
             payload.argon2_params,
             user_id,
-            session,
+            session.clone(),
         )
         .await?;
 
-    let access_cookie = Cookie::build(("access_token", tokens.access_token))
+    destroy_session(session).await?;
+
+    let access_cookie = Cookie::build(("sv_at", tokens.access_token))
         .max_age(Duration::minutes(15))
         .http_only(true)
         .secure(false)
@@ -114,12 +160,12 @@ pub async fn update_user_identifier(
         .path("/")
         .build();
 
-    let refresh_cookie = Cookie::build(("refresh_token", tokens.refresh_token))
+    let refresh_cookie = Cookie::build(("sv_rt", tokens.refresh_token))
         .max_age(Duration::days(7))
         .http_only(true)
         .secure(false)
         .same_site(SameSite::Lax)
-        .path("/api/auth/refresh")
+        .path("/")
         .build();
 
     let jar = jar.add(access_cookie).add(refresh_cookie);
@@ -129,6 +175,45 @@ pub async fn update_user_identifier(
         Json(SuccessResponse {
             data: None,
             message: "User identifier updated".to_string(),
+        }),
+    ))
+}
+
+#[instrument(name = "refresh_token", skip(auth_use_case, jar))]
+pub async fn refresh(
+    jar: CookieJar,
+    State(auth_use_case): State<Arc<AuthUseCase>>,
+) -> AppResult<(CookieJar, Json<SuccessResponse<AuthTokens>>)> {
+    let refresh_token = jar
+        .get("sv_rt")
+        .map(|cookie| cookie.value().to_owned())
+        .ok_or(AppError::Unauthorized("Missing refresh token".to_string()))?;
+
+    let tokens = auth_use_case.refresh_tokens(&refresh_token).await?;
+
+    let access_cookie = Cookie::build(("sv_at", tokens.access_token.clone()))
+        .max_age(Duration::minutes(15))
+        .http_only(true)
+        .secure(false) // TODO: Set to true in production
+        .same_site(SameSite::Lax)
+        .path("/")
+        .build();
+
+    let refresh_cookie = Cookie::build(("sv_rt", tokens.refresh_token.clone()))
+        .max_age(Duration::days(7))
+        .http_only(true)
+        .secure(false)
+        .same_site(SameSite::Lax)
+        .path("/")
+        .build();
+
+    let jar = jar.add(access_cookie).add(refresh_cookie);
+
+    Ok((
+        jar,
+        Json(SuccessResponse {
+            data: Some(tokens),
+            message: "Token refreshed".to_string(),
         }),
     ))
 }
