@@ -20,9 +20,17 @@ pub struct User {
     pub created_at: chrono::NaiveDateTime,
 }
 
-#[derive(Serialize, Deserialize)]
+#[derive(Serialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
-pub struct UserIndentifierPayload {
+pub struct UserInfo {
+    pub id: uuid::Uuid,
+    pub username: String,
+    pub email: String,
+}
+
+#[derive(Serialize, Deserialize, sqlx::FromRow)]
+#[serde(rename_all = "camelCase")]
+pub struct UserIdentifier {
     pub encrypted_dek: String,
     pub salt: String,
     pub nonce: String,
@@ -38,4 +46,3 @@ impl User {
         !self.is_email_verified
     }
 }
-
