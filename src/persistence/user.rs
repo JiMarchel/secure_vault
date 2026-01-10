@@ -3,7 +3,10 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    model::{app_error::AppResult, user::User},
+    model::{
+        app_error::AppResult,
+        user::{User, UserIdentifier, UserInfo},
+    },
     persistence::postgres::PostgresPersistence,
     service::user::UserPersistence,
 };
@@ -68,6 +71,20 @@ impl UserPersistence for PostgresPersistence {
     }
 
     #[instrument(
+        name= "persistence.get_user_identifier",
+        skip(self),
+        fields(email=%email)
+    )]
+    async fn get_user_identifier(&self, email: &str) -> AppResult<Option<UserIdentifier>> {
+        Ok(sqlx::query_as::<_, UserIdentifier>(
+            "SELECT encrypted_dek, nonce, salt, argon2_params FROM users WHERE email = $1",
+        )
+        .bind(email)
+        .fetch_optional(&self.pool)
+        .await?)
+    }
+
+    #[instrument(
         name= "persistence.update_user_identifier",
         skip(self, encrypted_dek, nonce, salt, argon2_params),
         fields(user_id=%user_id)
@@ -92,5 +109,19 @@ impl UserPersistence for PostgresPersistence {
         .await?;
 
         Ok(())
+    }
+
+    #[instrument(
+        name= "persistence.get_user_info_by_email",
+        skip(self),
+        fields(email=%email)
+    )]
+    async fn get_user_info_by_email(&self, email: &str) -> AppResult<Option<UserInfo>> {
+        Ok(
+            sqlx::query_as::<_, UserInfo>("SELECT id, email, username FROM users WHERE email = $1")
+                .bind(email)
+                .fetch_optional(&self.pool)
+                .await?,
+        )
     }
 }
