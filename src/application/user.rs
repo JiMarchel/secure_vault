@@ -5,11 +5,9 @@ use uuid::Uuid;
 use crate::{
     model::{
         app_error::{AppError, AppResult},
-        user::User,
+        user::{User, UserIdentifier},
     },
-    service::{
-        user::UserPersistence,
-    },
+    service::user::UserPersistence,
 };
 
 pub struct UserUseCase {
@@ -43,5 +41,11 @@ impl UserUseCase {
             .get_user_by_id(user_id)
             .await?
             .ok_or_else(|| AppError::NotFound("User not found".into()))
+    }
+
+
+    pub async fn get_user_identifier(&self, email: &str) -> AppResult<UserIdentifier> {
+        self.user_persistence.get_user_identifier(email).await?
+            .ok_or(AppError::Unauthorized("Wrong email or password".to_string()))
     }
 }
