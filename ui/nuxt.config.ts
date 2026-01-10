@@ -2,7 +2,7 @@
 export default defineNuxtConfig({
   components: [
     {
-      path: '~/app/components',
+      path: "~/app/components",
       pathPrefix: false,
     },
   ],
@@ -33,8 +33,14 @@ export default defineNuxtConfig({
     componentDir: "@/components/ui",
   },
   runtimeConfig: {
+    apiBaseUrl: "http://localhost:8000/api",
     public: {
       apiBaseUrl: "http://localhost:8000/api",
     },
   },
+  vite: {
+    server: {
+      allowedHosts: ['2fe965fc286e.ngrok-free.app']
+    }
+  }
 });
