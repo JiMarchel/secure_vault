@@ -4,7 +4,7 @@ use thiserror::Error;
 pub enum VaultError {
     #[error("Argon2 error: {0}")]
     Argon2(String),
-    #[error("Decryption failed")]
+    #[error("Wrong email or password")]
     DecryptionFailed,
     #[error("Encryption failed")]
     EncryptionFailed,
@@ -25,5 +25,3 @@ impl From<argon2::Error> for VaultError {
         VaultError::Argon2(err.to_string())
     }
 }
-
-
