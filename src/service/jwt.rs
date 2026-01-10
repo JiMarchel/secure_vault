@@ -11,6 +11,7 @@ use crate::model::{
 #[async_trait]
 pub trait JwtPersistence: Send + Sync {
     async fn create_refresh_token(&self, user_id: Uuid, email: &str) -> AppResult<()>;
+    async fn get_refresh_token(&self, user_id: Uuid) -> AppResult<Option<String>>;
     async fn delete_refresh_token(&self, user_id: Uuid) -> AppResult<()>;
 }
 
