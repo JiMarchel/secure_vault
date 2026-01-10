@@ -1,9 +1,12 @@
 <script setup lang="ts">
 import { useForm } from '@tanstack/vue-form';
 import { Eye, EyeClosed } from 'lucide-vue-next';
+import { toast } from 'vue-sonner';
 import { Button } from '~/components/ui/button';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '~/components/ui/card';
 import { FieldGroup } from '~/components/ui/field';
+import { errorHelper } from '~/lib/error-helper';
+import { encryptUserIdentifier } from '~/lib/wasm/vault';
 import type { User } from '~/utils/model/user';
 import { verifPassword } from '~/utils/validation/auth';
 
@@ -12,6 +15,7 @@ definePageMeta({
     middleware: ["check-session", "signup"]
 })
 
+const config = useRuntimeConfig()
 const userData: User | undefined = inject("userData");
 const isPasswordViewed = ref(false);
 
@@ -24,7 +28,22 @@ const form = useForm({
         onSubmit: verifPassword,
     },
     onSubmit: async ({ value }) => {
-        console.log(value)
+        try {
+            const user = await encryptUserIdentifier(value.password)
+            await $fetch(`${config.public.apiBaseUrl}/auth/verif/identifier`, {
+                method: "PATCH",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: user,
+                credentials: "include"
+            })
+        } catch (error) {
+            await errorHelper(error)
+        }finally{
+            toast.success("Password created successfully")
+            await navigateTo("/dashboard")
+        }
     }
 })
 
