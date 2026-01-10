@@ -1,5 +1,5 @@
 import type z from "zod";
-import type { signUp } from "../validation/auth";
+import type { login, signUp } from "../validation/auth";
 
 export type Identifier = {
   encryptedDek: string;
@@ -16,3 +16,5 @@ export type SessionData = {
 }
 
 export type signUpType = z.infer<typeof signUp>;
+
+export type loginType = z.infer<typeof login>;
