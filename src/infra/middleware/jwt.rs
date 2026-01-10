@@ -22,7 +22,7 @@ where
         let jar = CookieJar::from_headers(&parts.headers);
 
         let access_token = jar
-            .get("access_token")
+            .get("sv_at")
             .ok_or(AppError::Unauthorized("Missing access token".to_string()))?
             .value();
 
