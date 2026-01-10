@@ -3,15 +3,18 @@ import { Shield } from 'lucide-vue-next';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Button } from './ui/button';
 import { useForm } from '@tanstack/vue-form'
-import { signUp } from '~/utils/validation/auth';
+import { login as loginValidation, signUp } from '~/utils/validation/auth';
 import { Field } from './ui/field';
 import { Input } from './ui/input';
 import type { signUpType } from '~/utils/model/auth';
 import { errorHelper } from '~/lib/error-helper';
 import type { SuccessResponse } from '~/utils/model/response';
 import { toast } from 'vue-sonner';
+import { useAuth } from '~/composable/auth';
+import { Spinner } from './ui/spinner';
 
 const config = useRuntimeConfig();
+const {login, isLoading} = useAuth()
 const signUpForm = useForm({
     defaultValues: {
         username: "",
@@ -21,7 +24,6 @@ const signUpForm = useForm({
         onSubmit: signUp
     },
     onSubmit: async ({ value }) => {
-        console.log(value)
         try {
             const res = await $fetch<SuccessResponse<signUpType>>(`${config.public.apiBaseUrl}/auth`, {
                 method: "POST",
@@ -39,6 +41,23 @@ const signUpForm = useForm({
                 toast.success('Verification OTP sent to your email!')
                 await navigateTo('/verif/otp')
             }
+        } catch (error) {
+            await errorHelper(error)
+        }
+    },
+})
+
+const loginForm = useForm({
+    defaultValues: {
+        email: "",
+        password: ""
+    },
+    validators: {
+        onSubmit: loginValidation
+    },
+    onSubmit: async ({ value }) => {
+        try {
+            await login(value)
         } catch (error) {
             await errorHelper(error)
         }
@@ -73,18 +92,47 @@ function isInvalid(field: any) {
                                 Sign in to your SecureVault account
                             </DialogDescription>
                         </DialogHeader>
-                        <form class="space-y-4">
-                            <div class="space-y-2">
-                                <!-- <Label html-for="signin-email">Email</Label> -->
-                                <!-- <Input id="signin-email" type="email" placeholder="Enter your email" required /> -->
-                            </div>
+                        <form class="space-y-4" @submit.prevent="loginForm.handleSubmit">
+                            <FieldGroup>
+                                <loginForm.Field name="email">
+                                    <template #default="{ field }">
+                                        <Field :data-invalid="isInvalid(field)">
+                                            <FieldLabel :for="field.name">
+                                                Email
+                                            </FieldLabel>
+                                            <Input
+:id="field.name" :name="field.name" :model-value="field.state.value"
+                                                :aria-invalid="isInvalid(field)" placeholder="Your email here..."
+                                                autocomplete="off" @blur="field.handleBlur"
+                                                @input="field.handleChange($event.target.value)" />
+                                            <FieldError v-if="isInvalid(field)" :errors="field.state.meta.errors" />
+                                        </Field>
+                                    </template>
+                                </loginForm.Field>
+                                <loginForm.Field name="password">
+                                    <template #default="{ field }">
+                                        <Field :data-invalid="isInvalid(field)">
+                                            <FieldLabel :for="field.name">
+                                                Password
+                                            </FieldLabel>
+                                            <Input
+:id="field.name" :name="field.name" :model-value="field.state.value"
+                                                :aria-invalid="isInvalid(field)" placeholder="Your password here..."
+                                                autocomplete="off" type="password"
+                                                @blur="field.handleBlur" @input="field.handleChange($event.target.value)"/>
+                                            <FieldError v-if="isInvalid(field)" :errors="field.state.meta.errors" />
+                                        </Field>
+                                    </template>
+                                </loginForm.Field>
+                            </FieldGroup>
 
                             <div class="flex items-center justify-between">
                                 <NuxtLink href="#" class="text-sm text-primary hover:text-primary/70">
                                     Forgot password?
                                 </NuxtLink>
                             </div>
-                            <Button type="submit" class="w-full bg-primary hover:bg-primary/70">
+                            <Button type="submit" class="w-full bg-primary hover:bg-primary/70" :disabled="isLoading">
+                                <Spinner v-if="isLoading"/>
                                 Sign In
                             </Button>
                         </form>
@@ -137,7 +185,8 @@ function isInvalid(field: any) {
                                     </template>
                                 </signUpForm.Field>
                             </FieldGroup>
-                            <Button type="submit">
+                            <Button type="submit" :disabled="isLoading">
+                                <Spinner v-if="isLoading"/>
                                 Submit
                             </Button>
                         </form>
