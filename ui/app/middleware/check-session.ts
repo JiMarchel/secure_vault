@@ -7,7 +7,7 @@ export default defineNuxtRouteMiddleware(async (to) => {
   const config = useRuntimeConfig();
   const { value: authSession } = useCookie("auth_session");
 
-  const { data } =await  useFetch<SuccessResponse<signUpSession>>(
+  const { data } = await useFetch<SuccessResponse<signUpSession>>(
     `${config.public.apiBaseUrl}/session/check`,
     {
       headers: {
