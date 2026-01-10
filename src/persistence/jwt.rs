@@ -1,4 +1,5 @@
 use async_trait::async_trait;
+use sqlx::Row;
 use tracing::instrument;
 use uuid::Uuid;
 
@@ -31,6 +32,22 @@ impl JwtPersistence for PostgresPersistence {
         .await?;
 
         Ok(())
+    }
+
+    #[instrument(name = "persistence.get_refresh_token", skip(self, user_id))]
+    async fn get_refresh_token(&self, user_id: Uuid) -> AppResult<Option<String>> {
+        let row = sqlx::query(
+            r#"
+            SELECT token 
+            FROM refresh_tokens 
+            WHERE user_id = $1 AND expires_at > NOW()
+            "#,
+        )
+        .bind(user_id)
+        .fetch_optional(&self.pool)
+        .await?;
+
+        Ok(row.map(|r| r.get("token")))
     }
 
     #[instrument(name = "persistence.delete_refresh_token", skip(self, user_id))]
