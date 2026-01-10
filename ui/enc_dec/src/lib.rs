@@ -3,7 +3,8 @@ use wasm_bindgen::prelude::*;
 
 use crate::{
     model::{DecryptedVaultItem, LoginData, UserIdentifier, VaultItem, WasmResponse},
-    user::{decrypt_user_identifier_internal, encrypt_user_identifier_internal}, vault::{decrypt_vault_item_internal, encrypt_vault_item_internal},
+    user::{decrypt_user_identifier_internal, encrypt_user_identifier_internal},
+    vault::{decrypt_vault_item_internal, encrypt_vault_item_internal},
 };
 
 pub mod error;
