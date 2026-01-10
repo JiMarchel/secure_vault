@@ -30,3 +30,28 @@ Response Body Success :
   "message": "User fetched successfully"
 }
 ```
+## POST User Identifier
+
+Endpoint : POST api/user/identifier
+
+Request Body :
+
+```json
+{
+  "email": "string"
+}
+```
+
+Response Body Success :
+
+```json
+{
+  "data": {
+    "encrypted_dek": "string",
+    "salt": "string",
+    "argon2_params": "string",
+    "nonce": "string"
+  },
+  "message": "User identifier fetched successfully"
+}
+```
