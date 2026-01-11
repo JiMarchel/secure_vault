@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use constant_time_eq::constant_time_eq;
 use tower_sessions::Session;
 use tracing::instrument;
 use uuid::Uuid;
@@ -73,7 +74,27 @@ impl AuthUseCase {
         })
     }
 
-    pub async fn login(&self, email: &str) -> AppResult<(UserInfo, AuthTokens)> {
+    pub async fn login(
+        &self,
+        email: &str,
+        auth_verifier: &str,
+    ) -> AppResult<(UserInfo, AuthTokens)> {
+        // Get stored verifier
+        let stored_verifier = self
+            .user_persistence
+            .get_auth_verifier_by_email(email)
+            .await?
+            .ok_or(AppError::Unauthorized(
+                "Wrong email or password".to_string(),
+            ))?;
+
+        // Constant-time comparison to prevent timing attacks
+        if !constant_time_eq(auth_verifier.as_bytes(), stored_verifier.as_bytes()) {
+            return Err(AppError::Unauthorized(
+                "Wrong email or password".to_string(),
+            ));
+        }
+
         let user = self
             .user_persistence
             .get_user_info_by_email(email)
@@ -174,7 +195,7 @@ impl AuthUseCase {
 
     #[instrument(
         name = "use_case.update_user_identifier",
-        skip(self, session, encrypted_dek, nonce, salt, argon2_params),
+        skip(self, session, encrypted_dek, nonce, salt, argon2_params, auth_verifier),
         fields(user_id = %user_id)
     )]
     pub async fn update_user_identifier(
@@ -183,11 +204,19 @@ impl AuthUseCase {
         nonce: String,
         salt: String,
         argon2_params: String,
+        auth_verifier: String,
         user_id: Uuid,
         session: Session,
     ) -> AppResult<AuthTokens> {
         self.user_persistence
-            .update_user_identifier(encrypted_dek, nonce, salt, argon2_params, user_id)
+            .update_user_identifier(
+                encrypted_dek,
+                nonce,
+                salt,
+                argon2_params,
+                auth_verifier,
+                user_id,
+            )
             .await?;
 
         remove_session(session, "verif_password").await?;
