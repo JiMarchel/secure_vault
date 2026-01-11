@@ -35,12 +35,14 @@ pub struct UserIdentifier {
     pub nonce: String,
     pub salt: String,
     pub argon2_params: String,
+    pub auth_verifier: String,
 }
 
 #[derive(Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct LoginData {
     pub dek: String,
+    pub auth_verifier: String,
 }
 
 #[derive(Serialize, Deserialize)]
