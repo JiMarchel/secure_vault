@@ -19,7 +19,7 @@ use crate::{
         user::{UserIdentifier, UserInfo},
     },
     service::session::{destroy_session, get_session},
-    validation::user::{Email, EmailString, NewUser, NewUserRequest},
+    validation::user::{Email, EmailString, LoginRequest, NewUser, NewUserRequest},
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
 use time::Duration;
@@ -61,11 +61,16 @@ pub async fn register(
 pub async fn login(
     jar: CookieJar,
     State(auth_use_case): State<Arc<AuthUseCase>>,
-    Json(payload): Json<EmailString>,
+    Json(payload): Json<LoginRequest>,
 ) -> AppResult<(CookieJar, Json<SuccessResponse<UserInfo>>)> {
-    let user_email: Email = payload.try_into()?;
+    let user_email: Email = EmailString {
+        email: payload.email,
+    }
+    .try_into()?;
 
-    let res = auth_use_case.login(user_email.as_ref()).await?;
+    let res = auth_use_case
+        .login(user_email.as_ref(), &payload.auth_verifier)
+        .await?;
 
     let access_cookie = Cookie::build(("sv_at", res.1.access_token))
         .max_age(Duration::minutes(15))
@@ -145,6 +150,7 @@ pub async fn update_user_identifier(
             payload.nonce,
             payload.salt,
             payload.argon2_params,
+            payload.auth_verifier,
             user_id,
             session.clone(),
         )
