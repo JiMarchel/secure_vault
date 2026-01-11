@@ -123,7 +123,8 @@ function isInvalid(field: any) {
                 </CardDescription>
                 <CardAction>
                     <ClientOnly>
-                        <Button variant="link" type="button" :disabled="resendCooldown > 0 || isResending"
+                        <Button
+variant="link" type="button" :disabled="resendCooldown > 0 || isResending"
                             @click="resendOtp">
                             <span v-if="isResending">Sending...</span>
                             <span v-else-if="resendCooldown > 0">Resend in {{ resendCooldown }}s</span>
@@ -149,7 +150,8 @@ function isInvalid(field: any) {
                                 <template #default="{ field }">
 
                                     <Field :data-invalid="isInvalid(field)">
-                                        <InputOTP :model-value="field.state.value" :maxlength="6"
+                                        <InputOTP
+:model-value="field.state.value" :maxlength="6"
                                             :pattern="REGEXP_ONLY_DIGITS" @update:model-value="field.handleChange">
                                             <InputOTPGroup>
                                                 <InputOTPSlot :index="0" />
