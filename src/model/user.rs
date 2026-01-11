@@ -17,6 +17,7 @@ pub struct User {
     pub argon2_params: Option<String>,
     pub is_email_verified: bool,
     pub nonce: Option<String>,
+    pub auth_verifier: Option<String>,
     pub created_at: chrono::NaiveDateTime,
 }
 
@@ -35,6 +36,7 @@ pub struct UserIdentifier {
     pub salt: String,
     pub nonce: String,
     pub argon2_params: String,
+    pub auth_verifier: String,
 }
 
 impl User {
