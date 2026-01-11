@@ -14,10 +14,12 @@ export interface UserIdentifier {
   nonce: string;
   salt: string;
   argon2Params: string;
+  authVerifier: string;
 }
 
 export interface LoginData {
   dek: string;
+  authVerifier: string;
 }
 
 export interface VaultItem {
