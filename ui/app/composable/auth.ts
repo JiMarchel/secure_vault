@@ -1,6 +1,4 @@
-import {
-  decryptUserIdentifier,
-} from "~/lib/wasm/vault";
+import { decryptUserIdentifier } from "~/lib/wasm/vault";
 import type { SuccessResponse } from "~/utils/model/response";
 import { AuthError } from "~/lib/errors";
 import type { Identifier, loginType } from "~/utils/model/auth";
@@ -47,13 +45,14 @@ export function useAuth() {
   async function login(credentials: loginType): Promise<void> {
     isLoading.value = true;
     try {
-      const identifierResponse = await $fetch<
-        SuccessResponse<Identifier>
-      >(`${config.public.apiBaseUrl}/user/identifier`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: { email: credentials.email },
-      });
+      const identifierResponse = await $fetch<SuccessResponse<Identifier>>(
+        `${config.public.apiBaseUrl}/user/identifier`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: { email: credentials.email },
+        }
+      );
 
       if (!identifierResponse.data) {
         throw new AuthError("Wrong email or password");
@@ -73,6 +72,7 @@ export function useAuth() {
           headers: { "Content-Type": "application/json" },
           body: {
             email: credentials.email,
+            authVerifier: dekResult.authVerifier,
           },
           credentials: "include", // Untuk httpOnly cookies
         }
@@ -199,6 +199,5 @@ export function useAuth() {
     // DEK operations
     hasDek,
     useDek,
-
   };
 }
