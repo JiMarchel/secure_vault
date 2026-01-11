@@ -6,14 +6,15 @@ export type Identifier = {
   nonce: string;
   salt: string;
   argon2Params: string;
-}
+  authVerifier: string;
+};
 
 export type SessionData = {
-  access_token: string
-  refresh_token: string
-  token_type: string
-  expires_in: number
-}
+  access_token: string;
+  refresh_token: string;
+  token_type: string;
+  expires_in: number;
+};
 
 export type signUpType = z.infer<typeof signUp>;
 
