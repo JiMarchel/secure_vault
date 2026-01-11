@@ -5,10 +5,8 @@ import type { User } from '~/utils/model/user';
 const config = useRuntimeConfig();
 
 const { data: userData, refresh } = useFetch<SuccessResponse<User>>(`${config.public.apiBaseUrl}/session/me`, {
-    headers: {
-        Cookie: useRequestHeaders(['cookie']).cookie || '',
-    },
-    server: true,
+    server: false,
+    credentials: 'include',
 })
 
 provide("userData", computed(() => userData.value?.data ?? null));
