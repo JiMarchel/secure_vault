@@ -7,12 +7,17 @@ use chacha20poly1305::{
     KeyInit, XChaCha20Poly1305, XNonce,
     aead::{Aead, Payload},
 };
+use hkdf::Hkdf;
+use sha2::Sha256;
 use zeroize::Zeroize;
 
 use crate::{
     error::{AppResult, VaultError},
     model::UserIdentifier,
 };
+
+/// Context string for HKDF to ensure domain separation
+const AUTH_VERIFIER_INFO: &[u8] = b"secure_vault_v1|auth_verifier|hkdf_sha256";
 
 fn format_argon2_params(p: &Params) -> String {
     format!(
@@ -58,6 +63,17 @@ fn derive_master_key(master_password: &str, salt: &[u8], params: Params) -> [u8;
     key
 }
 
+/// Derive auth verifier from KEK using HKDF-SHA256
+/// This creates a value that proves knowledge of the password without revealing the KEK
+fn derive_auth_verifier(master_key: &[u8; 32]) -> String {
+    let hk = Hkdf::<Sha256>::new(None, master_key);
+    let mut verifier = [0u8; 32];
+    hk.expand(AUTH_VERIFIER_INFO, &mut verifier)
+        .expect("HKDF expand failed");
+
+    BASE64_STANDARD.encode(&verifier)
+}
+
 pub fn encrypt_user_identifier_internal(master_password: &str) -> AppResult<UserIdentifier> {
     let param =
         Params::new(64 * 1024, 3, 1, None).map_err(|e| VaultError::InvalidParams(e.to_string()))?;
@@ -67,6 +83,9 @@ pub fn encrypt_user_identifier_internal(master_password: &str) -> AppResult<User
     let salt_raw = salt.as_salt().as_str().as_bytes();
 
     let master_key = derive_master_key(master_password, salt_raw, param);
+
+    // Derive auth verifier from master key
+    let auth_verifier = derive_auth_verifier(&master_key);
 
     let mut dek = [0u8; 32];
     getrandom::getrandom(&mut dek).map_err(|e| VaultError::RngError(e.to_string()))?;
@@ -94,21 +113,27 @@ pub fn encrypt_user_identifier_internal(master_password: &str) -> AppResult<User
         nonce: BASE64_STANDARD.encode(&nonce_bytes),
         salt: BASE64_STANDARD.encode(salt_raw),
         argon2_params: argon2_param_str,
+        auth_verifier,
     })
 }
 
-
-pub fn decrypt_user_identifier_internal(master_password: &str, vault_data_json: &str) -> AppResult<String> {
+/// Returns a tuple of (dek_base64, auth_verifier_base64)
+pub fn decrypt_user_identifier_internal(
+    master_password: &str,
+    vault_data_json: &str,
+) -> AppResult<(String, String)> {
     let vault_data: UserIdentifier = serde_json::from_str(vault_data_json)?;
 
     let encrypted_dek = BASE64_STANDARD.decode(&vault_data.encrypted_dek)?;
     let nonce_bytes = BASE64_STANDARD.decode(&vault_data.nonce)?;
     let salt_bytes = BASE64_STANDARD.decode(&vault_data.salt)?;
 
-    let params = parse_argon2_params(&vault_data.argon2_params)
-        .map_err(|e| VaultError::InvalidParams(e))?;
+    let params =
+        parse_argon2_params(&vault_data.argon2_params).map_err(|e| VaultError::InvalidParams(e))?;
 
     let master_key = derive_master_key(master_password, &salt_bytes, params);
+
+    let auth_verifier = derive_auth_verifier(&master_key);
 
     let chiper = XChaCha20Poly1305::new(&master_key.into());
     let nonce = XNonce::from_slice(&nonce_bytes);
@@ -125,5 +150,5 @@ pub fn decrypt_user_identifier_internal(master_password: &str, vault_data_json: 
     let mut key_for_zeroize = master_key;
     key_for_zeroize.zeroize();
 
-    Ok(BASE64_STANDARD.encode(&dek))
+    Ok((BASE64_STANDARD.encode(&dek), auth_verifier))
 }
