@@ -35,7 +35,9 @@ pub fn encrypt_user_identifier(master_password: &str) -> String {
 #[wasm_bindgen]
 pub fn decrypt_user_identifier(master_password: &str, vault_data_json: &str) -> String {
     match decrypt_user_identifier_internal(master_password, vault_data_json) {
-        Ok(dek) => to_json_string(WasmResponse::success(LoginData { dek })),
+        Ok((dek, auth_verifier)) => {
+            to_json_string(WasmResponse::success(LoginData { dek, auth_verifier }))
+        }
         Err(e) => to_json_string(WasmResponse::<LoginData>::error(e.to_string())),
     }
 }
