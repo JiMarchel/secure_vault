@@ -18,8 +18,10 @@ pub trait UserPersistence: Send + Sync {
         nonce: String,
         salt: String,
         argon2_params: String,
+        auth_verifier: String,
         user_id: Uuid,
     ) -> AppResult<()>;
+    async fn get_auth_verifier_by_email(&self, email: &str) -> AppResult<Option<String>>;
     async fn get_user_identifier(&self, email: &str) -> AppResult<Option<UserIdentifier>>;
     async fn get_user_info_by_email(&self, email: &str) -> AppResult<Option<UserInfo>>;
 }
