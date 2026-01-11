@@ -20,6 +20,13 @@ pub struct NewUserRequest {
     pub email: String,
 }
 
+#[derive(Deserialize, Debug)]
+#[serde(rename_all = "camelCase")]
+pub struct LoginRequest {
+    pub email: String,
+    pub auth_verifier: String,
+}
+
 impl TryFrom<NewUserRequest> for NewUser {
     type Error = AppError;
 
