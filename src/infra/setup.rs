@@ -1,3 +1,4 @@
+use redis::Client;
 use secrecy::ExposeSecret;
 use tower_sessions::cookie::SameSite;
 use tower_sessions::cookie::time::Duration;
@@ -15,6 +16,7 @@ use crate::persistence::postgres::PostgresPersistence;
 use crate::service::email::SmtpEmailService;
 use crate::service::jwt::JwtService;
 use crate::service::otp::OtpService;
+use crate::service::rate_limiter::RateLimiter;
 use std::sync::Arc;
 
 pub struct AppDependencies {
@@ -61,11 +63,20 @@ pub async fn init_app_state() -> anyhow::Result<AppDependencies> {
 
     let otp_use_case = Arc::new(OtpUseCase::new(otp_service.clone()));
 
+    let redis_client = Client::open(config.redis_url).expect("Failed to connect redis");
+    let redis_conn = redis_client
+        .get_connection_manager()
+        .await
+        .expect("Failed to get Redis connection manager");
+
+    let rate_limiter = Arc::new(RateLimiter::new(redis_conn));
+
     Ok(AppDependencies {
         state: AppState {
             user_use_case,
             auth_use_case,
             otp_use_case,
+            rate_limiter,
         },
         session_layer,
     })
