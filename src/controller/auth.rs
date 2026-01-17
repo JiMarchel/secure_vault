@@ -18,7 +18,9 @@ use crate::{
         response::SuccessResponse,
         user::{UserIdentifier, UserInfo},
     },
-    service::session::{destroy_session, get_session},
+    service::{
+        session::{destroy_session, get_session},
+    },
     validation::user::{Email, EmailString, LoginRequest, NewUser, NewUserRequest},
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
