@@ -25,6 +25,16 @@ impl IntoResponse for AppError {
                     ErrorResponse::new(user_message),
                 )
             }
+            AppError::TooManyRequests(_) => {
+                (StatusCode::TOO_MANY_REQUESTS, ErrorResponse::new(user_message))
+            }
+            AppError::Redis(e) => {
+                tracing::error!(redis_error = e, "Redis error occurred");
+                (
+                    StatusCode::INTERNAL_SERVER_ERROR,
+                    ErrorResponse::new(user_message),
+                )
+            }
             AppError::Internal(e) => {
                 tracing::error!(internal_error = e, "Internal error occurred");
                 (
