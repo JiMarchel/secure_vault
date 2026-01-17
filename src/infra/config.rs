@@ -9,6 +9,7 @@ pub struct AppConfig {
     pub smtp: SmtpConfig,
     pub jwt: JwtConfig,
     pub database: DatabaseConfig,
+    pub redis_url: String,
     pub rust_log: String,
     pub environment: Environment,
 }
@@ -40,7 +41,10 @@ pub enum Environment {
 
 impl AppConfig {
     pub fn from_env() -> Self {
-        let environment = match get_env("ENVIRONMENT").unwrap_or_else(|_| "development".to_string()).as_str() {
+        let environment = match get_env("ENVIRONMENT")
+            .unwrap_or_else(|_| "development".to_string())
+            .as_str()
+        {
             "production" => Environment::Production,
             _ => Environment::Development,
         };
@@ -49,19 +53,29 @@ impl AppConfig {
             smtp: SmtpConfig {
                 host: get_env("SMTP_HOST").expect("SMTP_HOST not found"),
                 username: get_env("SMTP_USERNAME").expect("SMTP_USERNAME not found"),
-                password: SecretBox::new(Box::new(get_env("SMTP_PASSWORD").expect("SMTP_PASSWORD not found"))),
+                password: SecretBox::new(Box::new(
+                    get_env("SMTP_PASSWORD").expect("SMTP_PASSWORD not found"),
+                )),
                 from_email: get_env("SMTP_FROM_EMAIL").expect("SMTP_FROM_EMAIL not found"),
             },
             jwt: JwtConfig {
-                secret: SecretBox::new(Box::new(get_env("JWT_SECRET").expect("JWT_SECRET not found"))),
+                secret: SecretBox::new(Box::new(
+                    get_env("JWT_SECRET").expect("JWT_SECRET not found"),
+                )),
             },
             database: DatabaseConfig {
                 username: get_env("POSTGRES_USER").expect("POSTGRES_USER not found"),
                 database_name: get_env("POSTGRES_DB_NAME").expect("POSTGRES_DB_NAME not found"),
-                password: SecretBox::new(Box::new(get_env("POSTGRES_PASSWORD").expect("POSTGRES_PASSWORD not found"))),
+                password: SecretBox::new(Box::new(
+                    get_env("POSTGRES_PASSWORD").expect("POSTGRES_PASSWORD not found"),
+                )),
                 host: get_env("DB_HOST").expect("DB_HOST not found"),
-                port: get_env("DB_PORT").expect("DB_PORT not found").parse().unwrap(),
+                port: get_env("DB_PORT")
+                    .expect("DB_PORT not found")
+                    .parse()
+                    .unwrap(),
             },
+            redis_url: get_env("REDIS_URL").expect("REDIS_URL not found"),
             rust_log: get_env("RUST_LOG").expect("RUST_LOG not found"),
             environment,
         }
