@@ -6,6 +6,9 @@ pub enum AppError {
     #[error("Database error: {0}")]
     Database(String),
 
+    #[error("Redis error: {0}")]
+    Redis(String),
+
     #[error("Invalid credentials")]
     InvalidCredentials,
 
@@ -18,6 +21,9 @@ pub enum AppError {
     #[error("Bad Request: {0}")]
     BadRequest(String),
 
+    #[error("Too many requests: {0}")]
+    TooManyRequests(String),
+
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
 
@@ -26,6 +32,9 @@ pub enum AppError {
 
     #[error("Forbidden: {0}")]
     Forbidden(String),
+
+    #[error("Validation error")]
+    ValidationError(Vec<ValidationErrorDetail>),
 
     // JWT related errors
     #[error("JWT token creation failed: {0}")]
@@ -39,9 +48,6 @@ pub enum AppError {
 
     #[error("JWT token has expired")]
     ExpiredToken,
-
-    #[error("Validation error")]
-    ValidationError(Vec<ValidationErrorDetail>),
 }
 
 #[derive(Serialize, Debug)]
@@ -55,10 +61,12 @@ impl AppError {
     pub fn error_code(&self) -> &'static str {
         match self {
             AppError::Database(_) => "DATABASE_ERROR",
+            AppError::Redis(_) => "REDIS ERROR",
             AppError::InvalidCredentials => "INVALID_CREDENTIALS",
             AppError::Internal(_) => "INTERNAL_ERROR",
             AppError::NotFound(_) => "NOT_FOUND",
             AppError::BadRequest(_) => "BAD_REQUEST",
+            AppError::TooManyRequests(_) => "TOO_MANY_REQUESTS",
             AppError::Unauthorized(_) => "UNAUTHORIZED",
             AppError::Conflict(_) => "CONFLICT",
             AppError::Forbidden(_) => "FORBIDDEN",
@@ -74,10 +82,12 @@ impl AppError {
     pub fn user_message(&self) -> String {
         match self {
             AppError::Database(_) => "A database error occurred".to_string(),
+            AppError::Redis(_) => "A redis error occurend".to_string(),
             AppError::Internal(_) => "An internal server error occurred".to_string(),
             AppError::InvalidCredentials => "Invalid credentials provided".to_string(),
             AppError::NotFound(msg) => msg.clone(),
             AppError::BadRequest(msg) => msg.clone(),
+            AppError::TooManyRequests(msg) => msg.clone(),
             AppError::Unauthorized(msg) => msg.clone(),
             AppError::Conflict(msg) => msg.clone(),
             AppError::Forbidden(msg) => msg.clone(),
@@ -99,6 +109,12 @@ impl From<tower_sessions::session::Error> for AppError {
 impl From<sqlx::Error> for AppError {
     fn from(value: sqlx::Error) -> Self {
         AppError::Database(value.to_string())
+    }
+}
+
+impl From<redis::RedisError> for AppError {
+    fn from(value: redis::RedisError) -> Self {
+        AppError::Redis(value.to_string())
     }
 }
 
