@@ -13,9 +13,10 @@ use backend::{
     },
     model::{app_error::AppResult, user::User},
     persistence::postgres::PostgresPersistence,
-    service::{email::EmailService, jwt::JwtService, otp::OtpService},
+    service::{email::EmailService, jwt::JwtService, otp::OtpService, rate_limiter::RateLimiter},
 };
 use once_cell::sync::Lazy;
+use redis::Client;
 use serde_json::json;
 use sqlx::Executor;
 use sqlx::{Connection, PgConnection, PgPool, postgres::PgPoolOptions};
@@ -98,7 +99,7 @@ pub async fn spawn_app() -> TestApp {
 
     let email_service = Arc::new(FakeEmailService::new());
 
-    let state = build_test_app_state(pool.clone(), email_service.clone())
+    let state = build_test_app_state(pool.clone(), email_service.clone(), configuration.redis_url)
         .await
         .expect("Failed to build app state");
 
@@ -149,6 +150,7 @@ async fn configure_database(config: &DatabaseConfig) -> PgPool {
 async fn build_test_app_state(
     pool: PgPool,
     email_service: Arc<FakeEmailService>,
+    redis_url: String,
 ) -> anyhow::Result<AppDependencies> {
     let persistence = Arc::new(PostgresPersistence::new(pool.clone()));
 
@@ -167,6 +169,13 @@ async fn build_test_app_state(
 
     let otp_service = Arc::new(OtpService::new(persistence.clone(), email_service.clone()));
 
+    let redis_client = Client::open(redis_url).expect("Failed to connect redis");
+    let redis_conn = redis_client
+        .get_connection_manager()
+        .await
+        .expect("Failed to get Redis connection manager");
+
+    let rate_limiter = Arc::new(RateLimiter::new(redis_conn));
     Ok(AppDependencies {
         state: AppState {
             user_use_case: Arc::new(UserUseCase::new(persistence.clone())),
@@ -177,6 +186,7 @@ async fn build_test_app_state(
                 otp_service.clone(),
             )),
             otp_use_case: Arc::new(OtpUseCase::new(otp_service.clone())),
+            rate_limiter,
         },
         session_layer,
     })
