@@ -79,7 +79,6 @@ impl AuthUseCase {
         email: &str,
         auth_verifier: &str,
     ) -> AppResult<(UserInfo, AuthTokens)> {
-        // Get stored verifier
         let stored_verifier = self
             .user_persistence
             .get_auth_verifier_by_email(email)
