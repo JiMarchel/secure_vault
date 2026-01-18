@@ -2,14 +2,13 @@ use std::sync::Arc;
 
 use axum::extract::FromRef;
 
-use crate::{application::{auth::AuthUseCase, otp::OtpUseCase, user::UserUseCase}, service::rate_limiter::RateLimiter};
+use crate::application::{auth::AuthUseCase, otp::OtpUseCase, user::UserUseCase};
 
 #[derive(Clone)]
 pub struct AppState {
     pub user_use_case: Arc<UserUseCase>,
     pub auth_use_case: Arc<AuthUseCase>,
     pub otp_use_case: Arc<OtpUseCase>,
-    pub rate_limiter: Arc<RateLimiter>
 }
 
 impl FromRef<AppState> for Arc<UserUseCase> {
@@ -27,11 +26,5 @@ impl FromRef<AppState> for Arc<AuthUseCase> {
 impl FromRef<AppState> for Arc<OtpUseCase> {
     fn from_ref(app_state: &AppState) -> Self {
         app_state.otp_use_case.clone()
-    }
-}
-
-impl FromRef<AppState> for Arc<RateLimiter> {
-    fn from_ref(app_state: &AppState) -> Self {
-        app_state.rate_limiter.clone()
     }
 }
