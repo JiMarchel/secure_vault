@@ -7,24 +7,26 @@ use crate::{
         app_error::{AppError, AppResult},
         user::{User, UserIdentifier},
     },
-    service::user::UserPersistence,
+    service::{rate_limiter::RateLimiterService, user::UserPersistence},
 };
 
 pub struct UserUseCase {
     pub user_persistence: Arc<dyn UserPersistence>,
+    pub rate_limiter: Arc<RateLimiterService>,
 }
 
 impl UserUseCase {
-    pub fn new(user_persistence: Arc<dyn UserPersistence>) -> Self {
+    pub fn new(
+        user_persistence: Arc<dyn UserPersistence>,
+        rate_limiter: Arc<RateLimiterService>,
+    ) -> Self {
         Self {
             user_persistence,
+            rate_limiter,
         }
     }
 
-    #[instrument(
-        name = "use_case.get_user_by_email",
-        skip(self, email)
-    )]
+    #[instrument(name = "use_case.get_user_by_email", skip(self, email))]
     pub async fn get_user_by_email(&self, email: &str) -> AppResult<User> {
         self.user_persistence
             .get_user_by_email(email)
@@ -32,10 +34,7 @@ impl UserUseCase {
             .ok_or_else(|| AppError::NotFound(format!("User with email {} not found", email)))
     }
 
-    #[instrument(
-        name = "use_case.get_user_by_id",
-        skip(self, user_id)
-    )]
+    #[instrument(name = "use_case.get_user_by_id", skip(self, user_id))]
     pub async fn get_user_by_id(&self, user_id: Uuid) -> AppResult<User> {
         self.user_persistence
             .get_user_by_id(user_id)
@@ -43,9 +42,17 @@ impl UserUseCase {
             .ok_or_else(|| AppError::NotFound("User not found".into()))
     }
 
-
     pub async fn get_user_identifier(&self, email: &str) -> AppResult<UserIdentifier> {
-        self.user_persistence.get_user_identifier(email).await?
-            .ok_or(AppError::Unauthorized("Wrong email or password".to_string()))
+        self.user_persistence
+            .get_user_identifier(email)
+            .await?
+            .ok_or(AppError::Unauthorized(
+                "Wrong email or password".to_string(),
+            ))
+    }
+
+    #[instrument(name = "use_case.is_locked", skip(self), fields(email = %email))]
+    pub async fn is_locked(&self, email: &str) -> AppResult<Option<i64>> {
+        self.rate_limiter.is_locked(email).await
     }
 }
