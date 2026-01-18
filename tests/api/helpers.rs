@@ -13,7 +13,12 @@ use backend::{
     },
     model::{app_error::AppResult, user::User},
     persistence::postgres::PostgresPersistence,
-    service::{email::EmailService, jwt::JwtService, otp::OtpService, rate_limiter::RateLimiter},
+    service::{
+        email::{EmailPayload, EmailService, EmailTemplate},
+        jwt::JwtService,
+        otp::OtpService,
+        rate_limiter::RateLimiterService,
+    },
 };
 use once_cell::sync::Lazy;
 use redis::Client;
@@ -175,18 +180,18 @@ async fn build_test_app_state(
         .await
         .expect("Failed to get Redis connection manager");
 
-    let rate_limiter = Arc::new(RateLimiter::new(redis_conn));
+    let rate_limiter = Arc::new(RateLimiterService::new(redis_conn, email_service.clone()));
     Ok(AppDependencies {
         state: AppState {
-            user_use_case: Arc::new(UserUseCase::new(persistence.clone())),
+            user_use_case: Arc::new(UserUseCase::new(persistence.clone(), rate_limiter.clone())),
             auth_use_case: Arc::new(AuthUseCase::new(
                 persistence.clone(),
                 persistence.clone(),
                 jwt_service.clone(),
                 otp_service.clone(),
+                rate_limiter.clone(),
             )),
             otp_use_case: Arc::new(OtpUseCase::new(otp_service.clone())),
-            rate_limiter,
         },
         session_layer,
     })
@@ -249,26 +254,31 @@ impl FakeEmailService {
 
 #[async_trait]
 impl EmailService for FakeEmailService {
-    async fn send_otp_email(&self, email: &str, username: &str, otp_code: &str) -> AppResult<()> {
+    async fn send(&self, payload: EmailPayload) -> AppResult<()> {
+        let otp_code = match &payload.template {
+            EmailTemplate::Otp { otp_code } => otp_code.clone(),
+            EmailTemplate::AccountLocked { unlock_token, .. } => unlock_token.clone(),
+        };
+
         let captured = CapturedEmail {
-            to: email.to_string(),
-            username: username.to_string(),
-            otp_code: otp_code.to_string(),
+            to: payload.to_email.clone(),
+            username: payload.to_username.clone(),
+            otp_code,
         };
 
         self.sent_emails.lock().unwrap().push(captured);
 
         tracing::info!(
-            email = %email,
-            username = %username,
+            email = %payload.to_email,
+            username = %payload.to_username,
             "Fake email captured (not actually sent)"
         );
 
         Ok(())
     }
 
-    async fn send_email_async(&self, email: &str, username: &str, otp_code: &str) -> AppResult<()> {
+    async fn send_async(&self, payload: EmailPayload) -> AppResult<()> {
         // Untuk test, langsung panggil synchronously supaya bisa di-assert
-        self.send_otp_email(email, username, otp_code).await
+        self.send(payload).await
     }
 }
