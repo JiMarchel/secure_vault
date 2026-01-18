@@ -1,14 +1,21 @@
 use std::sync::Arc;
 
-use axum::{Json, Router, extract::State, routing::{get, post}};
+use axum::{
+    Json, Router,
+    extract::State,
+    routing::{get, post},
+};
 use tracing::instrument;
 
 use crate::{
-    application::user::UserUseCase, controller::app_state::AppState, model::{
+    application::user::UserUseCase,
+    controller::app_state::AppState,
+    model::{
         app_error::{AppError, AppResult},
         response::SuccessResponse,
         user::{User, UserIdentifier},
-    }, service::rate_limiter::{RateLimit, RateLimiter}, validation::user::{Email, EmailString}
+    },
+    validation::user::{Email, EmailString},
 };
 
 pub fn router() -> Router<AppState> {
@@ -38,37 +45,20 @@ pub async fn get_user_by_email(
 
 #[instrument(
     name = "get_user_identifier",
-    skip(user_use_case, rate_limiter, payload),
+    skip(user_use_case, payload),
     fields(payload)
 )]
 pub async fn get_user_identifier(
     State(user_use_case): State<Arc<UserUseCase>>,
-    State(rate_limiter): State<Arc<RateLimiter>>,
     Json(payload): Json<EmailString>,
 ) -> AppResult<Json<SuccessResponse<UserIdentifier>>> {
     let email: Email = payload.try_into()?;
 
-    rate_limiter.increment_email_attempts(email.as_ref()).await?;
-
-    let email_result = rate_limiter
-        .check_email_limit(email.as_ref(), 10)
-        .await?;
-
-    match email_result {
-        RateLimit::Locked { retry_after } => {
-            return Err(AppError::TooManyRequests(format!(
-                "Account locked, Try again in {} seconds",
-                retry_after
-            )));
-        }
-        RateLimit::Allowed { remaining } => {
-            if remaining <= 5 {
-                return Err(AppError::BadRequest(format!(
-                    "You have {} remaining attempts left.",
-                    remaining
-                )));
-            }
-        }
+    if let Some(retry_after) = user_use_case.is_locked(email.as_ref()).await? {
+        return Err(AppError::TooManyRequests(format!(
+            "Too many failed attempts. Try again in {} seconds, You can unlock your account by clicking on the link in the email we sent you.",
+            retry_after
+        )));
     }
 
     let user = user_use_case.get_user_identifier(email.as_ref()).await?;
