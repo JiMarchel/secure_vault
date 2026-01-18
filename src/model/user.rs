@@ -39,6 +39,12 @@ pub struct UserIdentifier {
     pub auth_verifier: String,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct UnlockAccount {
+    pub token: String,
+}
+
+
 impl User {
     pub fn is_pending_password_verification(&self) -> bool {
         self.is_email_verified && self.encrypted_dek.is_none()
