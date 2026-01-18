@@ -16,8 +16,6 @@ interface AuthTokens {
   refreshToken: string;
 }
 
-// DEK disimpan di closure, TIDAK reactive, TIDAK di localStorage
-// Ini memastikan DEK tidak terekspos di Vue DevTools
 let _dek: string | null = null;
 
 function setDek(dek: string) {
@@ -58,10 +56,24 @@ export function useAuth() {
         throw new AuthError("Wrong email or password");
       }
 
-      const dekResult = await decryptUserIdentifier(
-        credentials.password,
-        identifierResponse.data
-      );
+      let dekResult;
+      try {
+        dekResult = await decryptUserIdentifier(
+          credentials.password,
+          identifierResponse.data
+        );
+      } catch (decryptError) {
+        try {
+          await $fetch(`${config.public.apiBaseUrl}/auth/report-failed`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: { email: credentials.email },
+          });
+          throw new AuthError("Wrong email or password");
+        } catch (reportError: unknown) {
+          throw reportError;
+        }
+      }
 
       setDek(dekResult.dek);
 
@@ -74,7 +86,7 @@ export function useAuth() {
             email: credentials.email,
             authVerifier: dekResult.authVerifier,
           },
-          credentials: "include", // Untuk httpOnly cookies
+          credentials: "include",
         }
       );
 
