@@ -15,6 +15,7 @@ use crate::{
     service::{
         jwt::{JwtPersistence, JwtService},
         otp::OtpService,
+        rate_limiter::RateLimiterService,
         session::{get_session, insert_session, remove_session},
         user::UserPersistence,
     },
@@ -26,6 +27,7 @@ pub struct AuthUseCase {
     pub jwt_persistence: Arc<dyn JwtPersistence>,
     pub jwt_service: Arc<JwtService>,
     pub otp_service: Arc<OtpService>,
+    pub rate_limiter: Arc<RateLimiterService>,
 }
 
 impl AuthUseCase {
@@ -34,12 +36,14 @@ impl AuthUseCase {
         jwt_persistence: Arc<dyn JwtPersistence>,
         jwt_service: Arc<JwtService>,
         otp_service: Arc<OtpService>,
+        rate_limiter: Arc<RateLimiterService>,
     ) -> Self {
         Self {
             user_persistence,
             jwt_persistence,
             jwt_service,
             otp_service,
+            rate_limiter,
         }
     }
 
@@ -74,25 +78,56 @@ impl AuthUseCase {
         })
     }
 
+    #[instrument(
+        name = "use_case.login",
+        skip(self, auth_verifier),
+        fields(email = %email)
+    )]
     pub async fn login(
         &self,
         email: &str,
         auth_verifier: &str,
     ) -> AppResult<(UserInfo, AuthTokens)> {
-        let stored_verifier = self
+        if let Some(retry_after) = self.rate_limiter.is_locked(email).await? {
+            return Err(AppError::TooManyRequests(format!(
+                "Try again in {} seconds",
+                retry_after
+            )));
+        }
+
+        let (stored_verifier, username) = match self
             .user_persistence
             .get_auth_verifier_by_email(email)
             .await?
-            .ok_or(AppError::Unauthorized(
-                "Wrong email or password".to_string(),
-            ))?;
+        {
+            Some(verifier) => {
+                let username = self
+                    .user_persistence
+                    .get_user_by_email(email)
+                    .await?
+                    .map(|u| u.username)
+                    .unwrap_or_default();
+                (verifier, username)
+            }
+            None => {
+                return Err(AppError::Unauthorized(
+                    "Wrong email or password".to_string(),
+                ));
+            }
+        };
 
         // Constant-time comparison to prevent timing attacks
         if !constant_time_eq(auth_verifier.as_bytes(), stored_verifier.as_bytes()) {
+            self.rate_limiter
+                .record_failed_attempt(email, &username, 10)
+                .await?;
+
             return Err(AppError::Unauthorized(
                 "Wrong email or password".to_string(),
             ));
         }
+
+        self.rate_limiter.clear_attempts(email).await?;
 
         let user = self
             .user_persistence
@@ -314,5 +349,58 @@ impl AuthUseCase {
             authenticated: false,
             state: "".to_string(),
         })
+    }
+
+    #[instrument(name = "use_case.is_locked", skip(self), fields(email = %email))]
+    pub async fn is_locked(&self, email: &str) -> AppResult<Option<i64>> {
+        self.rate_limiter.is_locked(email).await
+    }
+
+    #[instrument(name = "use_case_unlock_account_with_token", skip(self, token))]
+    pub async fn unlock_account_with_token(&self, token: String) -> AppResult<SuccessResponse<()>> {
+        let email = self
+            .rate_limiter
+            .unlock_with_token(&token)
+            .await
+            .map_err(|_| AppError::InvalidToken)?;
+
+        Ok(SuccessResponse {
+            data: None,
+            message: format!("Account {} unlocked successfully", email),
+        })
+    }
+
+    #[instrument(name = "use_case.report_failed_attempt", skip(self), fields(email = %email))]
+    pub async fn report_failed_attempt(&self, email: &str) -> AppResult<()> {
+        if let Some(retry_after) = self.rate_limiter.is_locked(email).await? {
+            return Err(AppError::TooManyRequests(format!(
+                "Too many failed attempts. Try again in {} seconds",
+                retry_after
+            )));
+        }
+
+        let username = self
+            .user_persistence
+            .get_user_by_email(email)
+            .await?
+            .map(|u| u.username)
+            .unwrap_or_else(|| "User".to_string());
+
+        let result = self
+            .rate_limiter
+            .record_failed_attempt(email, &username, 10)
+            .await?;
+
+        match result {
+            crate::service::rate_limiter::RateLimit::Locked { retry_after } => {
+                Err(AppError::TooManyRequests(format!(
+                    "Too many failed attempts. Try again in {} seconds",
+                    retry_after
+                )))
+            }
+            crate::service::rate_limiter::RateLimit::Allowed { .. } => Err(AppError::Unauthorized(
+                "Wrong email or password".to_string(),
+            )),
+        }
     }
 }
