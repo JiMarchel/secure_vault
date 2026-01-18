@@ -36,6 +36,7 @@ impl RateLimiter {
                 .clone()
                 .set_ex::<_, _, ()>(&lock_key, true, 600)
                 .await?;
+            self.redis.clone().del::<_, ()>(&attempts_key).await?;
 
             return Ok(RateLimit::Locked { retry_after: 600 });
         }
@@ -47,7 +48,14 @@ impl RateLimiter {
 
     pub async fn increment_email_attempts(&self, email: &str) -> AppResult<()> {
         let attempts_key = format!("rate_limit:email_attempts:{}", email);
-        self.redis.clone().incr::<_, _, ()>(&attempts_key, 1).await?;
+        self.redis
+            .clone()
+            .incr::<_, _, ()>(&attempts_key, 1)
+            .await?;
+        self.redis
+            .clone()
+            .expire::<_, ()>(&attempts_key, 600)
+            .await?;
 
         Ok(())
     }
