@@ -9,7 +9,7 @@ use crate::{
         app_error::AppResult,
         otp::{OtpExpiresAt, OtpRecord},
     },
-    service::email::EmailService,
+    service::email::{EmailPayload, EmailService, EmailTemplate},
 };
 
 #[async_trait]
@@ -66,13 +66,17 @@ impl OtpService {
         let otp_code = generate_otp();
         let expires_at = chrono::Utc::now() + chrono::Duration::minutes(10);
 
+        let email_payload = EmailPayload {
+            to_email: email.to_string(),
+            to_username: username.to_string(),
+            template: EmailTemplate::Otp { otp_code: otp_code.clone() },
+        };
+
         self.otp_persistence
             .create_otp(user_id, &otp_code, expires_at)
             .await?;
 
-        self.email_service
-            .send_email_async(email, username, &otp_code)
-            .await?;
+        self.email_service.send_async(email_payload).await?;
 
         Ok(())
     }
@@ -90,13 +94,17 @@ impl OtpService {
         let otp_code = generate_otp();
         let expires_at = chrono::Utc::now() + chrono::Duration::minutes(10);
 
+        let email_payload = EmailPayload {
+            to_email: email.to_string(),
+            to_username: username.to_string(),
+            template: EmailTemplate::Otp { otp_code: otp_code.clone() },
+        };
+
         self.otp_persistence
             .update_otp_by_user_id(user_id, &otp_code, expires_at)
             .await?;
 
-        self.email_service
-            .send_email_async(email, username, &otp_code)
-            .await?;
+        self.email_service.send_async(email_payload).await?;
 
         Ok(())
     }
