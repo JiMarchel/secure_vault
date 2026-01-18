@@ -16,11 +16,9 @@ use crate::{
         jwt::{AuthTokens, Claims},
         otp::VerifyOtpPayload,
         response::SuccessResponse,
-        user::{UserIdentifier, UserInfo},
+        user::{UnlockAccount, UserIdentifier, UserInfo},
     },
-    service::{
-        session::{destroy_session, get_session},
-    },
+    service::session::{destroy_session, get_session},
     validation::user::{Email, EmailString, LoginRequest, NewUser, NewUserRequest},
 };
 use axum_extra::extract::cookie::{Cookie, CookieJar, SameSite};
@@ -34,6 +32,8 @@ pub fn router() -> Router<AppState> {
         .route("/refresh", post(refresh))
         .route("/logout", delete(logout))
         .route("/login", post(login))
+        .route("/report-failed", post(report_failed_attempt))
+        .route("/unlock-account", post(unlock_account))
 }
 
 #[instrument(
@@ -224,4 +224,37 @@ pub async fn refresh(
             message: "Token refreshed".to_string(),
         }),
     ))
+}
+
+/// Report a failed login attempt from client-side decryption failure.
+/// This is called by the frontend when password decryption fails (Poly1305 auth tag mismatch).
+#[instrument(
+    name = "report_failed_attempt",
+    skip(auth_use_case),
+    fields(email = %payload.email)
+)]
+pub async fn report_failed_attempt(
+    State(auth_use_case): State<Arc<AuthUseCase>>,
+    Json(payload): Json<EmailString>,
+) -> AppResult<Json<SuccessResponse<()>>> {
+    let email: Email = payload.try_into()?;
+
+    auth_use_case.report_failed_attempt(email.as_ref()).await?;
+
+    Ok(Json(SuccessResponse {
+        data: None,
+        message: "".to_string(),
+    }))
+}
+
+#[instrument(name = "unlock_account", skip(auth_use_case, payload))]
+pub async fn unlock_account(
+    State(auth_use_case): State<Arc<AuthUseCase>>,
+    Json(payload): Json<UnlockAccount>,
+) -> AppResult<Json<SuccessResponse<()>>> {
+    let res = auth_use_case
+        .unlock_account_with_token(payload.token)
+        .await?;
+
+    Ok(Json(res))
 }
