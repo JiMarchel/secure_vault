@@ -137,11 +137,15 @@ impl AuthUseCase {
                 "Wrong email or password".to_string(),
             ))?;
 
+        // Create new token family for this login session
+        let token_family = Uuid::new_v4();
         let access_token = self.jwt_service.create_access_token(user.id, email)?;
-        let refresh_token = self.jwt_service.create_refresh_token(user.id, email)?;
+        let refresh_token = self
+            .jwt_service
+            .create_refresh_token(user.id, email, token_family)?;
 
         self.jwt_persistence
-            .create_refresh_token(user.id, email)
+            .create_refresh_token(user.id, &refresh_token, token_family)
             .await?;
 
         Ok((
@@ -261,13 +265,15 @@ impl AuthUseCase {
             .await?
             .ok_or(AppError::NotFound("User not found".to_string()))?;
 
+        // Create new token family for this session
+        let token_family = Uuid::new_v4();
         let access_token = self.jwt_service.create_access_token(user_id, &user.email)?;
-        let refresh_token = self
-            .jwt_service
-            .create_refresh_token(user_id, &user.email)?;
+        let refresh_token =
+            self.jwt_service
+                .create_refresh_token(user_id, &user.email, token_family)?;
 
         self.jwt_persistence
-            .create_refresh_token(user_id, &refresh_token)
+            .create_refresh_token(user_id, &refresh_token, token_family)
             .await?;
 
         Ok(AuthTokens {
@@ -278,13 +284,22 @@ impl AuthUseCase {
 
     #[instrument(name = "use_case.refresh_tokens", skip(self, refresh_token))]
     pub async fn refresh_tokens(&self, refresh_token: &str) -> AppResult<AuthTokens> {
-        let claims = self.jwt_service.verify_token(refresh_token)?;
+        let claims = self.jwt_service.verify_refresh_token(refresh_token)?;
         let user_id = claims.sub;
+        let token_family = claims.jti;
 
-        let stored_token = self.jwt_persistence.get_refresh_token(user_id).await?;
+        let stored = self.jwt_persistence.get_refresh_token(user_id).await?;
 
-        match stored_token {
-            Some(token) if token == refresh_token => {
+        match stored {
+            Some(stored) if stored.is_revoked => {
+                // Token family was revoked = reuse detected, force re-login
+                self.jwt_persistence.delete_refresh_token(user_id).await?;
+                Err(AppError::Unauthorized(
+                    "Session revoked. Please login again.".to_string(),
+                ))
+            }
+            Some(stored) if stored.token == refresh_token => {
+                // Valid token - rotate with same family
                 let user = self
                     .user_persistence
                     .get_user_by_id(user_id)
@@ -294,12 +309,12 @@ impl AuthUseCase {
                 let new_access_token =
                     self.jwt_service.create_access_token(user_id, &user.email)?;
 
-                let new_refresh_token = self
-                    .jwt_service
-                    .create_refresh_token(user_id, &user.email)?;
+                let new_refresh_token =
+                    self.jwt_service
+                        .create_refresh_token(user_id, &user.email, token_family)?;
 
                 self.jwt_persistence
-                    .create_refresh_token(user_id, &new_refresh_token)
+                    .create_refresh_token(user_id, &new_refresh_token, token_family)
                     .await?;
 
                 Ok(AuthTokens {
@@ -307,15 +322,15 @@ impl AuthUseCase {
                     refresh_token: new_refresh_token,
                 })
             }
-            _ => {
-                // If token doesn't match or doesn't exist, it might be reuse attempt or invalid.
-                // For security, we should invalidate the existing token (if any) to prevent further abuse.
-                // Does this mean we delete it?
-                // The prompt says "features = [refresh token]".
-                // In a stricter implementation (Reuse Detection), we would delete the token family.
-                // For now, let's just return Unauthorized.
-                Err(AppError::Unauthorized("Invalid refresh token".to_string()))
+            Some(_) => {
+                // Token doesn't match = reuse attempt with old token
+                // Revoke entire family to protect user
+                self.jwt_persistence.revoke_token_family(user_id).await?;
+                Err(AppError::Unauthorized(
+                    "Token reuse detected. All sessions revoked.".to_string(),
+                ))
             }
+            None => Err(AppError::Unauthorized("Invalid refresh token".to_string())),
         }
     }
 
