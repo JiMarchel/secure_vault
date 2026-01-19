@@ -69,7 +69,9 @@ impl OtpService {
         let email_payload = EmailPayload {
             to_email: email.to_string(),
             to_username: username.to_string(),
-            template: EmailTemplate::Otp { otp_code: otp_code.clone() },
+            template: EmailTemplate::Otp {
+                otp_code: otp_code.clone(),
+            },
         };
 
         self.otp_persistence
@@ -97,7 +99,9 @@ impl OtpService {
         let email_payload = EmailPayload {
             to_email: email.to_string(),
             to_username: username.to_string(),
-            template: EmailTemplate::Otp { otp_code: otp_code.clone() },
+            template: EmailTemplate::Otp {
+                otp_code: otp_code.clone(),
+            },
         };
 
         self.otp_persistence
