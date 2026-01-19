@@ -3,7 +3,7 @@ use std::sync::Arc;
 use axum::{
     Json, Router,
     extract::State,
-    routing::{delete, patch, post},
+    routing::{delete, get, patch, post},
 };
 use tower_sessions::Session;
 use tracing::instrument;
@@ -27,6 +27,7 @@ use time::Duration;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", post(register))
+        .route("/me", get(get_current_user))
         .route("/verif/otp", patch(verify_otp))
         .route("/verif/identifier", patch(update_user_identifier))
         .route("/refresh", post(refresh))
@@ -257,4 +258,17 @@ pub async fn unlock_account(
         .await?;
 
     Ok(Json(res))
+}
+
+#[instrument(name = "get_current_user", skip(auth_use_case, claims))]
+pub async fn get_current_user(
+    claims: Claims,
+    State(auth_use_case): State<Arc<AuthUseCase>>,
+) -> AppResult<Json<SuccessResponse<UserInfo>>> {
+    let user = auth_use_case.get_user_info_by_id(claims.sub).await?;
+
+    Ok(Json(SuccessResponse {
+        data: Some(user),
+        message: "User retrieved successfully".to_string(),
+    }))
 }
