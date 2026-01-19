@@ -4,7 +4,8 @@ use tracing::instrument;
 use uuid::Uuid;
 
 use crate::{
-    model::app_error::AppResult, persistence::postgres::PostgresPersistence,
+    model::{app_error::AppResult, jwt::StoredRefreshToken},
+    persistence::postgres::PostgresPersistence,
     service::jwt::JwtPersistence,
 };
 
@@ -12,22 +13,30 @@ use crate::{
 impl JwtPersistence for PostgresPersistence {
     #[instrument(
         name = "persistence.create_refresh_token",
-        skip(self, refresh_token, user_id)
+        skip(self, token, user_id, token_family)
     )]
-    async fn create_refresh_token(&self, user_id: Uuid, refresh_token: &str) -> AppResult<()> {
+    async fn create_refresh_token(
+        &self,
+        user_id: Uuid,
+        token: &str,
+        token_family: Uuid,
+    ) -> AppResult<()> {
         sqlx::query(
             r#"
-            INSERT INTO refresh_tokens (user_id, token, expires_at)
-            VALUES ($1, $2, NOW() + INTERVAL '7 days')
+            INSERT INTO refresh_tokens (user_id, token, token_family, expires_at)
+            VALUES ($1, $2, $3, NOW() + INTERVAL '7 days')
             ON CONFLICT (user_id)
             DO UPDATE SET
                 token = EXCLUDED.token,
+                token_family = EXCLUDED.token_family,
                 expires_at = EXCLUDED.expires_at,
+                is_revoked = FALSE,
                 updated_at = NOW()
         "#,
         )
         .bind(user_id)
-        .bind(refresh_token)
+        .bind(token)
+        .bind(token_family)
         .execute(&self.pool)
         .await?;
 
@@ -35,10 +44,10 @@ impl JwtPersistence for PostgresPersistence {
     }
 
     #[instrument(name = "persistence.get_refresh_token", skip(self, user_id))]
-    async fn get_refresh_token(&self, user_id: Uuid) -> AppResult<Option<String>> {
+    async fn get_refresh_token(&self, user_id: Uuid) -> AppResult<Option<StoredRefreshToken>> {
         let row = sqlx::query(
             r#"
-            SELECT token 
+            SELECT token, token_family, is_revoked
             FROM refresh_tokens 
             WHERE user_id = $1 AND expires_at > NOW()
             "#,
@@ -47,7 +56,27 @@ impl JwtPersistence for PostgresPersistence {
         .fetch_optional(&self.pool)
         .await?;
 
-        Ok(row.map(|r| r.get("token")))
+        Ok(row.map(|r| StoredRefreshToken {
+            token: r.get("token"),
+            token_family: r.get("token_family"),
+            is_revoked: r.get("is_revoked"),
+        }))
+    }
+
+    #[instrument(name = "persistence.revoke_token_family", skip(self, user_id))]
+    async fn revoke_token_family(&self, user_id: Uuid) -> AppResult<()> {
+        sqlx::query(
+            r#"
+            UPDATE refresh_tokens 
+            SET is_revoked = TRUE, updated_at = NOW()
+            WHERE user_id = $1
+            "#,
+        )
+        .bind(user_id)
+        .execute(&self.pool)
+        .await?;
+
+        Ok(())
     }
 
     #[instrument(name = "persistence.delete_refresh_token", skip(self, user_id))]
