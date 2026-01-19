@@ -11,11 +11,6 @@ interface UserInfo {
   username: string;
 }
 
-interface AuthTokens {
-  accessToken: string;
-  refreshToken: string;
-}
-
 let _dek: string | null = null;
 
 function setDek(dek: string) {
@@ -36,7 +31,7 @@ export function useAuth() {
   const user = useState<UserInfo | null>("auth:user", () => null);
   const isAuthenticated = useState<boolean>(
     "auth:isAuthenticated",
-    () => false
+    () => false,
   );
   const isLoading = useState<boolean>("auth:isLoading", () => false);
 
@@ -49,7 +44,7 @@ export function useAuth() {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: { email: credentials.email },
-        }
+        },
       );
 
       if (!identifierResponse.data) {
@@ -60,7 +55,7 @@ export function useAuth() {
       try {
         dekResult = await decryptUserIdentifier(
           credentials.password,
-          identifierResponse.data
+          identifierResponse.data,
         );
       } catch (decryptError) {
         try {
@@ -87,7 +82,7 @@ export function useAuth() {
             authVerifier: dekResult.authVerifier,
           },
           credentials: "include",
-        }
+        },
       );
 
       if (!authResponse.data) {
@@ -103,16 +98,20 @@ export function useAuth() {
     }
   }
 
-  async function logout(): Promise<void> {
+  async function logout(silent = false): Promise<void> {
     try {
       await $fetch(`${config.public.apiBaseUrl}/auth/logout`, {
         method: "DELETE",
         credentials: "include",
       });
 
-      toast.success("Successfully logged out");
+      if (!silent) {
+        toast.success("Successfully logged out");
+      }
     } catch (error) {
-      await errorHelper(error);
+      if (!silent) {
+        await errorHelper(error);
+      }
     } finally {
       clearDek();
       user.value = null;
@@ -122,43 +121,14 @@ export function useAuth() {
     }
   }
 
-  // ============================================================================
-  // Token Refresh (dipanggil otomatis oleh interceptor)
-  // ============================================================================
-
-  async function refreshAccessToken(): Promise<boolean> {
-    try {
-      await $fetch<SuccessResponse<AuthTokens>>(
-        `${config.public.apiBaseUrl}/auth/refresh`,
-        {
-          method: "POST",
-          credentials: "include", // Kirim httpOnly refresh token cookie
-        }
-      );
-      return true;
-    } catch {
-      // Refresh gagal, force logout
-      await logout();
-      return false;
-    }
-  }
-
-  // ============================================================================
-  // Check Auth Status (untuk middleware/initial load)
-  // ============================================================================
-
   async function checkAuth(): Promise<boolean> {
     if (isAuthenticated.value && user.value) {
       return true;
     }
 
     try {
-      const response = await $fetch<SuccessResponse<UserInfo>>(
-        `${config.public.apiBaseUrl}/auth/me`,
-        {
-          credentials: "include",
-        }
-      );
+      const { $api } = useNuxtApp();
+      const response = await $api<SuccessResponse<UserInfo>>("/auth/me");
 
       if (response.data) {
         user.value = response.data;
@@ -172,16 +142,10 @@ export function useAuth() {
     return false;
   }
 
-  // ============================================================================
-  // Vault Operations (menggunakan DEK)
-  // ============================================================================
-
   function hasDek(): boolean {
     return _dek !== null;
   }
 
-  // Expose DEK getter untuk vault operations
-  // PENTING: Hanya gunakan untuk encrypt/decrypt, jangan expose ke UI
   function useDek(): string {
     const dek = getDek();
     if (!dek) {
@@ -192,23 +156,15 @@ export function useAuth() {
     return dek;
   }
 
-  // ============================================================================
-  // Return
-  // ============================================================================
-
   return {
-    // State (readonly untuk komponen)
     user: readonly(user),
     isAuthenticated: readonly(isAuthenticated),
     isLoading: readonly(isLoading),
 
-    // Actions
     login,
     logout,
-    refreshAccessToken,
     checkAuth,
 
-    // DEK operations
     hasDek,
     useDek,
   };
