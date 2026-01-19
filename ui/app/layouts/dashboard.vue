@@ -1,12 +1,17 @@
 <script setup lang="ts">
-import DashboardNavbar from '~/components/DashboardNavbar.vue';
+import AppSidebar from '~/components/AppSidebar.vue';
+import { SidebarProvider, SidebarTrigger } from '~/components/ui/sidebar';
+
 
 
 </script>
 
 <template>
-    <div>
-        <DashboardNavbar/>
-        <slot />
-    </div>
+    <SidebarProvider>
+        <AppSidebar />
+        <div>
+            <SidebarTrigger />
+            <slot />
+        </div>
+    </SidebarProvider>
 </template>
