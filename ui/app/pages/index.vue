@@ -5,7 +5,7 @@ import { CheckCircle, Shield } from "lucide-vue-next";
 import Badge from "~/components/ui/badge/Badge.vue";
 
 definePageMeta({
-  middleware: ["check-session"],
+  middleware: ["check-session", "guest"],
 });
 </script>
 
