@@ -1,11 +1,10 @@
 <script setup lang="ts">
 definePageMeta({
-    layout: "dashboard"
-})
+  layout: "dashboard",
+  middleware: ["auth"],
+});
 </script>
 
 <template>
-    <div>
-        <h1>Dashboard</h1>
-    </div>
+  
 </template>
