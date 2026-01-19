@@ -24,4 +24,5 @@ pub trait UserPersistence: Send + Sync {
     async fn get_auth_verifier_by_email(&self, email: &str) -> AppResult<Option<String>>;
     async fn get_user_identifier(&self, email: &str) -> AppResult<Option<UserIdentifier>>;
     async fn get_user_info_by_email(&self, email: &str) -> AppResult<Option<UserInfo>>;
+    async fn get_user_info_by_id(&self, id: Uuid) -> AppResult<Option<UserInfo>>;
 }
