@@ -140,4 +140,18 @@ impl UserPersistence for PostgresPersistence {
                 .await?,
         )
     }
+
+    #[instrument(
+        name= "persistence.get_user_info_by_id",
+        skip(self),
+        fields(user_id=%id)
+    )]
+    async fn get_user_info_by_id(&self, id: Uuid) -> AppResult<Option<UserInfo>> {
+        Ok(
+            sqlx::query_as::<_, UserInfo>("SELECT id, email, username FROM users WHERE id = $1")
+                .bind(id)
+                .fetch_optional(&self.pool)
+                .await?,
+        )
+    }
 }
