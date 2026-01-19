@@ -418,4 +418,15 @@ impl AuthUseCase {
             )),
         }
     }
+
+    #[instrument(name = "use_case.get_user_info_by_id", skip(self), fields(user_id = %user_id))]
+    pub async fn get_user_info_by_id(&self, user_id: Uuid) -> AppResult<UserInfo> {
+        let user = self
+            .user_persistence
+            .get_user_info_by_id(user_id)
+            .await?
+            .ok_or(AppError::NotFound("User not found".to_string()))?;
+
+        Ok(user)
+    }
 }
