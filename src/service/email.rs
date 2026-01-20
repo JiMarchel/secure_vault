@@ -99,19 +99,23 @@ impl EmailService for SmtpEmailService {
         fields(email = %payload.to_email)
     )]
     async fn send(&self, payload: EmailPayload) -> AppResult<()> {
+        let from_mailbox = self
+            .from_email
+            .parse()
+            .map_err(|e| AppError::Internal(format!("Invalid from_email: {e}")))?;
+
+        let to_mailbox = payload
+            .to_email
+            .parse()
+            .map_err(|e| AppError::Internal(format!("Invalid to_email: {e}")))?;
+
         let message = Message::builder()
-            .from(Mailbox::new(
-                Some("No Reply".to_owned()),
-                self.from_email.parse().unwrap(),
-            ))
-            .to(Mailbox::new(
-                Some(payload.to_username.clone()),
-                payload.to_email.parse().unwrap(),
-            ))
+            .from(Mailbox::new(Some("No Reply".to_owned()), from_mailbox))
+            .to(Mailbox::new(Some(payload.to_username.clone()), to_mailbox))
             .subject(payload.subject())
             .header(ContentType::TEXT_PLAIN)
             .body(payload.body())
-            .unwrap();
+            .map_err(|e| AppError::Internal(format!("Failed to build email message: {e}")))?;
         let creds = Credentials::new(self.smtp_username.clone(), self.smtp_password.clone());
         let transporter = SmtpTransport::relay(&self.smtp_host)
             .unwrap()
