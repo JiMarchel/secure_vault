@@ -12,10 +12,11 @@ use crate::{
         response::SuccessResponse,
         user::{CheckSessionResponse, User, UserInfo},
     },
+    persistence::redis::otp::OtpPersistence,
     service::{
         jwt::{JwtPersistence, JwtService},
         otp::OtpService,
-        rate_limiter::RateLimiterService,
+        rate_limiter::LoginRateLimiterService,
         session::{get_session, insert_session, remove_session},
         user::UserPersistence,
     },
@@ -27,7 +28,8 @@ pub struct AuthUseCase {
     pub jwt_persistence: Arc<dyn JwtPersistence>,
     pub jwt_service: Arc<JwtService>,
     pub otp_service: Arc<OtpService>,
-    pub rate_limiter: Arc<RateLimiterService>,
+    pub otp_persistence: Arc<dyn OtpPersistence>,
+    pub login_rate_limiter: Arc<LoginRateLimiterService>,
 }
 
 impl AuthUseCase {
@@ -36,14 +38,16 @@ impl AuthUseCase {
         jwt_persistence: Arc<dyn JwtPersistence>,
         jwt_service: Arc<JwtService>,
         otp_service: Arc<OtpService>,
-        rate_limiter: Arc<RateLimiterService>,
+        otp_persistence: Arc<dyn OtpPersistence>,
+        login_rate_limiter: Arc<LoginRateLimiterService>,
     ) -> Self {
         Self {
             user_persistence,
             jwt_persistence,
             jwt_service,
             otp_service,
-            rate_limiter,
+            otp_persistence,
+            login_rate_limiter,
         }
     }
 
@@ -88,11 +92,11 @@ impl AuthUseCase {
         email: &str,
         auth_verifier: &str,
     ) -> AppResult<(UserInfo, AuthTokens)> {
-        if let Some(retry_after) = self.rate_limiter.is_locked(email).await? {
-            return Err(AppError::TooManyRequests(format!(
-                "Try again in {} seconds",
-                retry_after
-            )));
+        if let Some(retry_after) = self.login_rate_limiter.check_if_locked(email).await? {
+            return Err(AppError::TooManyRequests {
+                message: format!("Try again in {} seconds", retry_after),
+                retry_after: Some(retry_after as u64),
+            });
         }
 
         let (stored_verifier, username) = match self
@@ -118,8 +122,8 @@ impl AuthUseCase {
 
         // Constant-time comparison to prevent timing attacks
         if !constant_time_eq(auth_verifier.as_bytes(), stored_verifier.as_bytes()) {
-            self.rate_limiter
-                .record_failed_attempt(email, &username, 10)
+            self.login_rate_limiter
+                .record_failed_attempt(email, &username)
                 .await?;
 
             return Err(AppError::Unauthorized(
@@ -127,7 +131,7 @@ impl AuthUseCase {
             ));
         }
 
-        self.rate_limiter.clear_attempts(email).await?;
+        self.login_rate_limiter.clear_attempts(email).await?;
 
         let user = self
             .user_persistence
@@ -207,20 +211,24 @@ impl AuthUseCase {
         otp_code: &str,
         session: Session,
     ) -> AppResult<SuccessResponse<()>> {
-        let otp_record = self.otp_service.get_otp_by_user_id(user_id).await?;
+        let otp_record = self
+            .otp_persistence
+            .get_otp(user_id)
+            .await?
+            .ok_or(AppError::BadRequest("Invalid user id.".to_string()))?;
 
-        if otp_record.otp_code != otp_code {
+        if otp_record.code != otp_code {
             return Err(AppError::Unauthorized("Invalid OTP code.".to_string()));
         }
 
-        if chrono::Utc::now() > otp_record.otp_expires_at {
+        if chrono::Utc::now() > otp_record.expires_at {
             return Err(AppError::Unauthorized("OTP code has expired.".to_string()));
         }
 
         self.user_persistence
             .update_email_verification(user_id)
             .await?;
-        self.otp_service.delete_otp_by_user_id(user_id).await?;
+        self.otp_persistence.delete_otp(user_id).await?;
 
         remove_session(session.clone(), "verif_otp").await?;
         insert_session(session, "verif_password", user_id).await?;
@@ -368,13 +376,13 @@ impl AuthUseCase {
 
     #[instrument(name = "use_case.is_locked", skip(self), fields(email = %email))]
     pub async fn is_locked(&self, email: &str) -> AppResult<Option<i64>> {
-        self.rate_limiter.is_locked(email).await
+        self.login_rate_limiter.check_if_locked(email).await
     }
 
     #[instrument(name = "use_case_unlock_account_with_token", skip(self, token))]
     pub async fn unlock_account_with_token(&self, token: String) -> AppResult<SuccessResponse<()>> {
         let email = self
-            .rate_limiter
+            .login_rate_limiter
             .unlock_with_token(&token)
             .await
             .map_err(|_| AppError::InvalidToken)?;
@@ -387,11 +395,14 @@ impl AuthUseCase {
 
     #[instrument(name = "use_case.report_failed_attempt", skip(self), fields(email = %email))]
     pub async fn report_failed_attempt(&self, email: &str) -> AppResult<()> {
-        if let Some(retry_after) = self.rate_limiter.is_locked(email).await? {
-            return Err(AppError::TooManyRequests(format!(
-                "Too many failed attempts. Try again in {} seconds",
-                retry_after
-            )));
+        if let Some(retry_after) = self.login_rate_limiter.check_if_locked(email).await? {
+            return Err(AppError::TooManyRequests {
+                message: format!(
+                    "Too many failed attempts. Try again in {} seconds, You can unlock your account by clicking on the link in the email we sent you.",
+                    retry_after
+                ),
+                retry_after: Some(retry_after as u64),
+            });
         }
 
         let username = self
@@ -402,20 +413,23 @@ impl AuthUseCase {
             .unwrap_or_else(|| "User".to_string());
 
         let result = self
-            .rate_limiter
-            .record_failed_attempt(email, &username, 10)
+            .login_rate_limiter
+            .record_failed_attempt(email, &username)
             .await?;
 
         match result {
-            crate::service::rate_limiter::RateLimit::Locked { retry_after } => {
-                Err(AppError::TooManyRequests(format!(
-                    "Too many failed attempts. Try again in {} seconds",
-                    retry_after
-                )))
+            crate::service::rate_limiter::LoginRateLimitStatus::Locked { retry_after } => {
+                Err(AppError::TooManyRequests {
+                    message: format!(
+                        "Too many failed attempts. Try again in {} seconds, You can unlock your account by clicking on the link in the email we sent you.",
+                        retry_after
+                    ),
+                    retry_after: Some(retry_after as u64),
+                })
             }
-            crate::service::rate_limiter::RateLimit::Allowed { .. } => Err(AppError::Unauthorized(
-                "Wrong email or password".to_string(),
-            )),
+            crate::service::rate_limiter::LoginRateLimitStatus::Allowed { .. } => Err(
+                AppError::Unauthorized("Wrong email or password".to_string()),
+            ),
         }
     }
 
