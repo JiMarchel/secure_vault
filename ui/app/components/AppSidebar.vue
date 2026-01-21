@@ -1,37 +1,40 @@
 <script setup lang="ts">
-import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem } from '@/components/ui/sidebar'
-import { ChevronUp, Contact, CreditCard, FileKey, KeyRound, User2 } from 'lucide-vue-next';
+import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from '@/components/ui/sidebar'
+import { ChevronUp, CirclePlus, Contact, CreditCard, FileKey, KeyRound, User2 } from 'lucide-vue-next';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Spinner } from './ui/spinner';
 import { Button } from './ui/button';
-import { Input } from './ui/input';
-import { Label } from './ui/label';
 import FormDialog from './FormDialog.vue';
+import SidebarInputGroup from './input-group/SidebarInputGroup.vue';
+import { Separator } from './ui/separator';
 
-const addNewItems = [
+const sidebarItems = [
     {
-        title: 'Password',
-        url: '#',
-        icon: KeyRound,
-        description: 'Add a new password entry to your vault.'
-    },
-    {
-        title: 'Secure Note',
-        url: '#',
-        icon: FileKey,
-        description: 'Save a secure note that only you can read.'
-    },
-    {
-        title: 'Credit Card',
-        url: '#',
-        icon: CreditCard,
-        description: 'Store your credit card information securely.'
-    },
-    {
-        title: 'Contact Info',
-        url: '#',
-        icon: Contact,
-        description: 'Keep important contact details safe.'
+        title: "Add Vault",
+        icon: CirclePlus,
+        items: [
+            {
+                title: 'Password',
+                icon: KeyRound,
+                description: 'Add a new password entry to your vault.'
+            },
+            {
+                title: 'Secure Note',
+                url: '#',
+                icon: FileKey,
+                description: 'Save a secure note that only you can read.'
+            },
+            {
+                title: 'Credit Card',
+                icon: CreditCard,
+                description: 'Store your credit card information securely.'
+            },
+            {
+                title: 'Contact Info',
+                icon: Contact,
+                description: 'Keep important contact details safe.'
+            },
+        ]
     },
 ]
 
@@ -50,84 +53,27 @@ function handleSubmit(title: string) {
                 <SidebarGroupLabel>Add new</SidebarGroupLabel>
                 <SidebarGroupContent>
                     <SidebarMenu>
-                        <SidebarMenuItem v-for="item in addNewItems" :key="item.title">
-                            <FormDialog :title="`Add ${item.title}`" :description="item.description"
-                                @submit="handleSubmit(item.title)">
-                                <template #trigger>
-                                    <SidebarMenuButton>
-                                        <component :is="item.icon" />
-                                        <span>{{ item.title }}</span>
-                                    </SidebarMenuButton>
-                                </template>
+                        <SidebarMenuItem v-for="item in sidebarItems" :key="item.title">
+                            <SidebarMenuButton>
+                                <component :is="item.icon" />
+                                <span>{{ item.title }}</span>
+                            </SidebarMenuButton>
+                            <SidebarMenuSub v-if="item.items.length">
+                                <SidebarMenuSubItem v-for="childItem in item.items" :key="childItem.title">
+                                    <FormDialog :title="`Add ${childItem.title}`" :description="childItem.description"
+                                        @submit="handleSubmit(childItem.title)">
 
-                                <div class="grid gap-4 py-4">
-                                    <div class="grid gap-2">
-                                        <Label>Name</Label>
-                                        <Input placeholder="e.g. My Personal Account" />
-                                    </div>
-
-                                    <!-- Dynamic Fields based on Type -->
-                                    <template v-if="item.title === 'Password'">
-                                        <div class="grid gap-2">
-                                            <Label>Username</Label>
-                                            <Input placeholder="username" />
-                                        </div>
-                                        <div class="grid gap-2">
-                                            <Label>Password</Label>
-                                            <Input type="password" placeholder="********" />
-                                        </div>
-                                        <div class="grid gap-2">
-                                            <Label>Website</Label>
-                                            <Input placeholder="https://example.com" />
-                                        </div>
-                                    </template>
-
-                                    <template v-else-if="item.title === 'Secure Note'">
-                                        <div class="grid gap-2">
-                                            <Label>Note</Label>
-                                            <textarea
-                                                class="flex min-h-[80px] w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-                                                placeholder="Type your note here..."></textarea>
-                                        </div>
-                                    </template>
-
-                                    <template v-else-if="item.title === 'Credit Card'">
-                                        <div class="grid gap-2">
-                                            <Label>Card Number</Label>
-                                            <Input placeholder="0000 0000 0000 0000" />
-                                        </div>
-                                        <div class="grid grid-cols-2 gap-4">
-                                            <div class="grid gap-2">
-                                                <Label>Expiry Date</Label>
-                                                <Input placeholder="MM/YY" />
-                                            </div>
-                                            <div class="grid gap-2">
-                                                <Label>CVV</Label>
-                                                <Input placeholder="123" />
-                                            </div>
-                                        </div>
-                                        <div class="grid gap-2">
-                                            <Label>Cardholder Name</Label>
-                                            <Input placeholder="John Doe" />
-                                        </div>
-                                    </template>
-
-                                    <template v-else-if="item.title === 'Contact Info'">
-                                        <div class="grid gap-2">
-                                            <Label>Full Name</Label>
-                                            <Input placeholder="John Doe" />
-                                        </div>
-                                        <div class="grid gap-2">
-                                            <Label>Address</Label>
-                                            <Input placeholder="123 Main St" />
-                                        </div>
-                                        <div class="grid gap-2">
-                                            <Label>Phone</Label>
-                                            <Input placeholder="+1 234 567 890" />
-                                        </div>
-                                    </template>
-                                </div>
-                            </FormDialog>
+                                        <template #trigger>
+                                            <SidebarMenuSubButton>
+                                                <component :is="childItem.icon" />
+                                                <span>{{ childItem.title }}</span>
+                                            </SidebarMenuSubButton>
+                                        </template>
+                                        <Separator />
+                                        <SidebarInputGroup :title="childItem.title" />
+                                    </FormDialog>
+                                </SidebarMenuSubItem>
+                            </SidebarMenuSub>
                         </SidebarMenuItem>
                     </SidebarMenu>
                 </SidebarGroupContent>
