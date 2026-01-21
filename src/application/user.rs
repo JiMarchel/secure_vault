@@ -7,22 +7,22 @@ use crate::{
         app_error::{AppError, AppResult},
         user::{User, UserIdentifier},
     },
-    service::{rate_limiter::RateLimiterService, user::UserPersistence},
+    service::{rate_limiter::{LoginRateLimiterService}, user::UserPersistence},
 };
 
 pub struct UserUseCase {
     pub user_persistence: Arc<dyn UserPersistence>,
-    pub rate_limiter: Arc<RateLimiterService>,
+    pub login_rate_limiter: Arc<LoginRateLimiterService>,
 }
 
 impl UserUseCase {
     pub fn new(
         user_persistence: Arc<dyn UserPersistence>,
-        rate_limiter: Arc<RateLimiterService>,
+        login_rate_limiter: Arc<LoginRateLimiterService>,
     ) -> Self {
         Self {
             user_persistence,
-            rate_limiter,
+            login_rate_limiter,
         }
     }
 
@@ -53,6 +53,6 @@ impl UserUseCase {
 
     #[instrument(name = "use_case.is_locked", skip(self), fields(email = %email))]
     pub async fn is_locked(&self, email: &str) -> AppResult<Option<i64>> {
-        self.rate_limiter.is_locked(email).await
+        self.login_rate_limiter.check_if_locked(email).await
     }
 }
