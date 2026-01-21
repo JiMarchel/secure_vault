@@ -23,7 +23,7 @@ const isInvalid = computed(() => {
             <InputGroupAddon v-if="$slots.icon" align="inline-start">
                 <slot name="icon" />
             </InputGroupAddon>
-            <InputGroupInput :placeholder="placeholder" :name="field.name" :model-value="field.state.value"
+            <InputGroupInput :id="field.name" :placeholder="placeholder" :name="field.name" :model-value="field.state.value"
                 :aria-invalid="isInvalid" :autocomplete="autocomplete ?? 'off'" @blur="field.handleBlur"
                 @input="field.handleChange(($event.target as HTMLInputElement).value)" />
             <InputGroupAddon v-if="$slots.addon" align="inline-end">
