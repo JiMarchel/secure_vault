@@ -11,18 +11,25 @@ interface UserInfo {
   username: string;
 }
 
-let _dek: string | null = null;
+const DEK_STORAGE_KEY = "app:dek";
 
 function setDek(dek: string) {
-  _dek = dek;
+  if (import.meta.client) {
+    sessionStorage.setItem(DEK_STORAGE_KEY, dek);
+  }
 }
 
 function getDek(): string | null {
-  return _dek;
+  if (import.meta.client) {
+    return sessionStorage.getItem(DEK_STORAGE_KEY);
+  }
+  return null;
 }
 
 function clearDek() {
-  _dek = null;
+  if (import.meta.client) {
+    sessionStorage.removeItem(DEK_STORAGE_KEY);
+  }
 }
 
 export function useAuth() {
@@ -34,6 +41,7 @@ export function useAuth() {
     () => false,
   );
   const isLoading = useState<boolean>("auth:isLoading", () => false);
+  const needsUnlock = useState<boolean>("auth:needsUnlock", () => false);
 
   async function login(credentials: loginType): Promise<void> {
     isLoading.value = true;
@@ -91,10 +99,49 @@ export function useAuth() {
 
       user.value = authResponse.data;
       isAuthenticated.value = true;
+      needsUnlock.value = false;
 
       await navigateTo("/dashboard");
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  async function unlockVault(password: string): Promise<void> {
+    const { $api } = useNuxtApp();
+
+    try {
+      const identifierResponse = await $api<SuccessResponse<Identifier>>(
+        `${config.public.apiBaseUrl}/user/identifier`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: { email: user?.value?.email },
+        },
+      );
+
+      if (!identifierResponse.data) {
+        throw new AuthError("Failed to get vault data");
+      }
+
+      const dekResult = await decryptUserIdentifier(
+        password,
+        identifierResponse.data,
+      );
+
+      setDek(dekResult.dek);
+      needsUnlock.value = false;
+
+      toast.success("Vault unlocked successfully");
+    } catch (error) {
+      try {
+        await $api(`${config.public.apiBaseUrl}/auth/report-failed`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: { email: user?.value?.email },
+        });
+      } catch {}
+      await errorHelper(error);
     }
   }
 
@@ -116,13 +163,13 @@ export function useAuth() {
       clearDek();
       user.value = null;
       isAuthenticated.value = false;
-
+      needsUnlock.value = false;
       await navigateTo("/");
     }
   }
 
   async function checkAuth(): Promise<boolean> {
-    if (isAuthenticated.value && user.value) {
+    if (isAuthenticated.value && user.value && hasDek()) {
       return true;
     }
 
@@ -133,26 +180,38 @@ export function useAuth() {
       if (response.data) {
         user.value = response.data;
         isAuthenticated.value = true;
+
+        if (!hasDek()) {
+          needsUnlock.value = true;
+          return true;
+        }
+
         return true;
       }
     } catch {
-      // Not authenticated
+      clearDek();
+      user.value = null;
+      isAuthenticated.value = false;
+      needsUnlock.value = false;
     }
 
     return false;
   }
 
   function hasDek(): boolean {
-    return _dek !== null;
+    return getDek() !== null;
   }
 
   function useDek(): string {
     const dek = getDek();
+
     if (!dek) {
-      throw new AuthError("DEK not available. Please login again.", {
+      needsUnlock.value = true;
+      throw new AuthError("Vault locked. Please unlock to continue.", {
         status: 403,
       });
     }
+
     return dek;
   }
 
@@ -160,10 +219,12 @@ export function useAuth() {
     user: readonly(user),
     isAuthenticated: readonly(isAuthenticated),
     isLoading: readonly(isLoading),
+    needsUnlock: readonly(needsUnlock),
 
     login,
     logout,
     checkAuth,
+    unlockVault,
 
     hasDek,
     useDek,
