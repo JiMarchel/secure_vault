@@ -26,39 +26,32 @@ function generatePassword() {
     const digits = '0123456789'
     const symbols = '@!&%*'
 
-    // Build character pool and required characters
-    let pool = lowercase // Always include lowercase
+    let pool = lowercase
     const requiredChars: string[] = []
 
     if (generatePasswordOpt.letters) {
         pool += uppercase
-        // Add at least one uppercase
         const randomIndex = Math.floor(Math.random() * uppercase.length)
         requiredChars.push(uppercase[randomIndex]!)
     }
 
     if (generatePasswordOpt.digits) {
         pool += digits
-        // Add at least one digit
         const randomIndex = Math.floor(Math.random() * digits.length)
         requiredChars.push(digits[randomIndex]!)
     }
 
     if (generatePasswordOpt.symbols) {
         pool += symbols
-        // Add at least one symbol
         const randomIndex = Math.floor(Math.random() * symbols.length)
         requiredChars.push(symbols[randomIndex]!)
     }
 
-    // Always add at least one lowercase
     const randomIndex = Math.floor(Math.random() * lowercase.length)
     requiredChars.push(lowercase[randomIndex]!)
 
-    // Calculate remaining length
     const remainingLength = Math.max(0, generatePasswordOpt.length[0]! - requiredChars.length)
 
-    // Generate random characters for remaining slots
     const array = new Uint32Array(remainingLength)
     window.crypto.getRandomValues(array)
 
@@ -67,10 +60,8 @@ function generatePassword() {
         randomChars.push(pool.charAt(array[i]! % pool.length))
     }
 
-    // Combine required and random characters
     const allChars = [...requiredChars, ...randomChars]
 
-    // Shuffle the password to randomize position of required characters
     for (let i = allChars.length - 1; i > 0; i--) {
         const randomArray = new Uint32Array(1)
         window.crypto.getRandomValues(randomArray)
@@ -81,13 +72,11 @@ function generatePassword() {
     return allChars.join('')
 }
 
-// Manual regenerate
 function regeneratePassword() {
     generatedPassword.value = generatePassword()
     toast.success('Password regenerated!')
 }
 
-// Copy to clipboard
 async function copyToClipboard() {
     try {
         await navigator.clipboard.writeText(generatedPassword.value)
@@ -103,12 +92,10 @@ async function copyToClipboard() {
     }
 }
 
-// Auto-regenerate password when options change
 watch(generatePasswordOpt, () => {
     generatedPassword.value = generatePassword()
 }, { deep: true })
 
-// Generate initial password when generator is opened
 watch(isGeneratePassword, (isOpen) => {
     if (isOpen && !generatedPassword.value) {
         generatedPassword.value = generatePassword()
