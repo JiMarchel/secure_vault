@@ -1,11 +1,18 @@
 <script setup lang="ts">
-import { Check, CircleCheck, Copy, Globe, KeyRound, LockKeyhole, Mail, RefreshCw, X } from 'lucide-vue-next';
-import { InputGroup, InputGroupAddon, InputGroupInput, InputGroupTextarea } from '../ui/input-group';
+import { Check, CircleCheck, Copy, Globe, HelpCircle, KeyRound, LockKeyhole, Mail, RefreshCw, Shield, X } from 'lucide-vue-next';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, InputGroupTextarea } from '../ui/input-group';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { Switch } from '../ui/switch';
 import { Slider } from '../ui/slider';
 import { toast } from 'vue-sonner';
+import FormDialog from '../FormDialog.vue';
+import { SidebarMenuSubButton } from '../ui/sidebar';
+import { Separator } from '../ui/separator';
+import { useForm } from '@tanstack/vue-form';
+import { addPassword } from '~/utils/validation/vaults';
+import { FieldGroup, FieldLabel, FormInput } from '../ui/field';
+import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 
 const isGeneratePassword = ref(false)
 const generatePasswordOpt = reactive({
@@ -101,27 +108,79 @@ watch(isGeneratePassword, (isOpen) => {
         generatedPassword.value = generatePassword()
     }
 })
+
+const addPasswordForm = useForm({
+    defaultValues: {
+        title: "",
+        usernameOrEmail: "",
+        password: "",
+        websiteOrApp: ""
+    },
+    validators: {
+        onSubmit: addPassword
+    },
+    onSubmit: async ({ value }) => {
+        console.log(value)
+    },
+})
 </script>
 
 <template>
-    <div class="space-y-4">
-        <div class="space-y-2">
-            <Label>Login Details</Label>
-            <InputGroup>
-                <InputGroupAddon align="inline-start">
-                    <Mail />
-                </InputGroupAddon>
-                <InputGroupInput placeholder="Username or email" />
-            </InputGroup>
-            <InputGroup>
-                <InputGroupAddon align="inline-start">
-                    <LockKeyhole />
-                </InputGroupAddon>
-                <InputGroupInput placeholder="Password" />
-            </InputGroup>
-        </div>
+    <FormDialog title='Add Password' description="Add a new password to your vault"
+        @submit="addPasswordForm.handleSubmit">
 
-        <div>
+        <template #trigger>
+            <SidebarMenuSubButton>
+                <KeyRound />
+                <span>Password</span>
+            </SidebarMenuSubButton>
+        </template>
+
+        <Separator />
+
+        <FieldGroup class="space-y-3">
+            <div class="space-y-2">
+                <addPasswordForm.Field name="title" v-slot="{ field }">
+                    <FormInput :field="field" placeholder="Title*">
+                        <template #icon>
+                            <Shield />
+                        </template>
+                        <template #addon>
+                            <TooltipProvider>
+                                <Tooltip>
+                                    <TooltipTrigger as-child>
+                                        <InputGroupButton variant="ghost" aria-label="Help" size="icon-xs">
+                                            <HelpCircle />
+                                        </InputGroupButton>
+                                    </TooltipTrigger>
+                                    <TooltipContent>
+                                        <p>Name for your vault</p>
+                                    </TooltipContent>
+                                </Tooltip>
+                            </TooltipProvider>
+                        </template>
+                    </FormInput>
+                </addPasswordForm.Field>
+
+                <FieldLabel>Login Details</FieldLabel>
+
+                <addPasswordForm.Field name="usernameOrEmail" v-slot="{ field }">
+                    <FormInput :field="field" placeholder="Username or email">
+                        <template #icon>
+                            <Mail />
+                        </template>
+                    </FormInput>
+                </addPasswordForm.Field>
+
+                <addPasswordForm.Field name="password" v-slot="{ field }">
+                    <FormInput :field="field" placeholder="Password">
+                        <template #icon>
+                            <LockKeyhole />
+                        </template>
+                    </FormInput>
+                </addPasswordForm.Field>
+            </div>
+
             <Button v-if="!isGeneratePassword" variant="outline" class="w-full" type="button"
                 @click="isGeneratePassword = !isGeneratePassword">
                 <KeyRound />
@@ -131,7 +190,8 @@ watch(isGeneratePassword, (isOpen) => {
                 <InputGroup>
                     <InputGroupAddon align="block-start">
                         <InputGroupButton variant="outline" class="flex-1 text-green-500 hover:text-green-600"
-                            type="button" @click="isGeneratePassword = false">
+                            type="button"
+                            @click="addPasswordForm.setFieldValue('password', generatedPassword); isGeneratePassword = false">
                             <CircleCheck /> Use
                         </InputGroupButton>
 
@@ -171,18 +231,20 @@ watch(isGeneratePassword, (isOpen) => {
                         </div>
                     </InputGroupAddon>
                 </InputGroup>
-
             </div>
-        </div>
 
-        <div class="space-y-2">
-            <Label>Website or Apps</Label>
-            <InputGroup>
-                <InputGroupAddon align="inline-start">
-                    <Globe />
-                </InputGroupAddon>
-                <InputGroupInput placeholder="Website or Apps" />
-            </InputGroup>
-        </div>
-    </div>
+            <addPasswordForm.Field name="websiteOrApp" v-slot="{ field }">
+                <FormInput :field="field" placeholder="Website or Apps name">
+                    <template #label>
+                        <FieldLabel>Website or Apps</FieldLabel>
+                    </template>
+                    <template #icon>
+                        <Globe />
+                    </template>
+                </FormInput>
+            </addPasswordForm.Field>
+        </FieldGroup>
+
+    </FormDialog>
+
 </template>
