@@ -2,6 +2,9 @@
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from './ui/dialog';
 import { Button } from './ui/button';
 import { Spinner } from './ui/spinner';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput } from './ui/input-group';
+import { HelpCircle, Shield } from 'lucide-vue-next';
+import { Tooltip, TooltipProvider, TooltipTrigger } from './ui/tooltip';
 
 withDefaults(defineProps<{
     title: string
@@ -31,6 +34,26 @@ const emit = defineEmits(['submit'])
             </DialogHeader>
 
             <form class="space-y-4" @submit.prevent="emit('submit')">
+                <InputGroup>
+                    <InputGroupAddon align="inline-start">
+                        <Shield />
+                    </InputGroupAddon>
+                    <InputGroupInput name="title" placeholder="Title*" />
+                    <InputGroupAddon align="inline-end">
+                        <TooltipProvider>
+                            <Tooltip>
+                                <TooltipTrigger as-child>
+                                    <InputGroupButton variant="ghost" aria-label="Help" size="icon-xs">
+                                        <HelpCircle />
+                                    </InputGroupButton>
+                                </TooltipTrigger>
+                                <TooltipContent>
+                                    <p>Name for your vault</p>
+                                </TooltipContent>
+                            </Tooltip>
+                        </TooltipProvider>
+                    </InputGroupAddon>
+                </InputGroup>
                 <slot />
 
                 <slot name="footer">
