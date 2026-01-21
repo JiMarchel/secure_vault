@@ -1,12 +1,10 @@
 <script setup lang="ts">
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from '@/components/ui/sidebar'
-import { ChevronUp, CirclePlus, Contact, CreditCard, FileKey, KeyRound, User2 } from 'lucide-vue-next';
+import { ChevronUp, CirclePlus, CirclePlusIcon, Contact, CreditCard, FileKey, KeyRound, User2 } from 'lucide-vue-next';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Spinner } from './ui/spinner';
 import { Button } from './ui/button';
-import FormDialog from './FormDialog.vue';
-import SidebarInputGroup from './input-group/SidebarInputGroup.vue';
-import { Separator } from './ui/separator';
+import PasswordGroup from './input-group/PasswordGroup.vue';
 
 const sidebarItems = [
     {
@@ -40,10 +38,6 @@ const sidebarItems = [
 
 const { user, logout, isLoading } = useAuth()
 
-function handleSubmit(title: string) {
-    console.log('Submitting', title)
-    // TODO: Implement submission logic
-}
 </script>
 
 <template>
@@ -53,25 +47,14 @@ function handleSubmit(title: string) {
                 <SidebarGroupLabel>Add new</SidebarGroupLabel>
                 <SidebarGroupContent>
                     <SidebarMenu>
-                        <SidebarMenuItem v-for="item in sidebarItems" :key="item.title">
+                        <SidebarMenuItem>
                             <SidebarMenuButton>
-                                <component :is="item.icon" />
-                                <span>{{ item.title }}</span>
+                                <CirclePlusIcon/>
+                                <span>Add Vault</span>
                             </SidebarMenuButton>
-                            <SidebarMenuSub v-if="item.items.length">
-                                <SidebarMenuSubItem v-for="childItem in item.items" :key="childItem.title">
-                                    <FormDialog :title="`Add ${childItem.title}`" :description="childItem.description"
-                                        @submit="handleSubmit(childItem.title)">
-
-                                        <template #trigger>
-                                            <SidebarMenuSubButton>
-                                                <component :is="childItem.icon" />
-                                                <span>{{ childItem.title }}</span>
-                                            </SidebarMenuSubButton>
-                                        </template>
-                                        <Separator />
-                                        <SidebarInputGroup :title="childItem.title" />
-                                    </FormDialog>
+                            <SidebarMenuSub>
+                                <SidebarMenuSubItem>
+                                    <PasswordGroup />
                                 </SidebarMenuSubItem>
                             </SidebarMenuSub>
                         </SidebarMenuItem>
