@@ -55,10 +55,13 @@ pub async fn get_user_identifier(
     let email: Email = payload.try_into()?;
 
     if let Some(retry_after) = user_use_case.is_locked(email.as_ref()).await? {
-        return Err(AppError::TooManyRequests(format!(
-            "Too many failed attempts. Try again in {} seconds, You can unlock your account by clicking on the link in the email we sent you.",
-            retry_after
-        )));
+        return Err(AppError::TooManyRequests {
+            message: format!(
+                "Too many failed attempts. Try again in {} seconds, You can unlock your account by clicking on the link in the email we sent you.",
+                retry_after
+            ),
+            retry_after: Some(retry_after as u64),
+        });
     }
 
     let user = user_use_case.get_user_identifier(email.as_ref()).await?;
