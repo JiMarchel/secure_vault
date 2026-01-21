@@ -9,7 +9,6 @@ import type { signUpType } from '~/utils/model/auth';
 import { errorHelper } from '~/lib/error-helper';
 import type { SuccessResponse } from '~/utils/model/response';
 import { toast } from 'vue-sonner';
-import { Spinner } from './ui/spinner';
 import FormDialog from './FormDialog.vue';
 
 const config = useRuntimeConfig();
