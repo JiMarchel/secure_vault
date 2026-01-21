@@ -1,92 +1,72 @@
 use std::sync::Arc;
-
-use redis::AsyncCommands;
 use tracing::{instrument, warn};
-use uuid::Uuid;
 
 use crate::{
     model::app_error::{AppError, AppResult},
+    persistence::redis::{
+        rate_limiter::RateLimiterPersistence, token_store::TokenStorePersistence,
+    },
     service::email::{EmailPayload, EmailService, EmailTemplate},
 };
 
-// 10 Minutes
+const MAX_LOGIN_ATTEMPTS: u32 = 10;
+const ATTEMPTS_WINDOW_SECS: u64 = 600;
 const LOCK_DURATION_SECS: u64 = 600;
-const ATTEMPTS_EXPIRY_SECS: u64 = 600;
 
-pub struct RateLimiterService {
-    redis: redis::aio::ConnectionManager,
-    email_service: Arc<dyn EmailService>,
-}
-
-pub enum RateLimit {
+pub enum LoginRateLimitStatus {
     Allowed { remaining: u32 },
     Locked { retry_after: i64 },
 }
 
-impl RateLimiterService {
-    pub fn new(redis: redis::aio::ConnectionManager, email_service: Arc<dyn EmailService>) -> Self {
+pub struct LoginRateLimiterService {
+    redis: Arc<dyn RateLimiterPersistence>,
+    token_store: Arc<dyn TokenStorePersistence>,
+    email_service: Arc<dyn EmailService>,
+}
+
+impl LoginRateLimiterService {
+    pub fn new(
+        redis: Arc<dyn RateLimiterPersistence>,
+        token_store: Arc<dyn TokenStorePersistence>,
+        email_service: Arc<dyn EmailService>,
+    ) -> Self {
         Self {
             redis,
+            token_store,
             email_service,
         }
     }
 
-    fn attempts_key(email: &str) -> String {
-        format!("rate_limit:login_attempts:{}", email)
+    fn rate_limit_key(email: &str) -> String {
+        format!("rate_limit:login:{}", email)
     }
 
-    fn lock_key(email: &str) -> String {
-        format!("rate_limit:login_lock:{}", email)
+    #[instrument(name = "login_rate_limiter.check_if_locked", skip(self))]
+    pub async fn check_if_locked(&self, email: &str) -> AppResult<Option<i64>> {
+        let key = Self::rate_limit_key(email);
+        self.redis.is_locked(&key).await
     }
 
-    fn unlock_token_key(token: &str) -> String {
-        format!("unlock_token:{}", token)
-    }
-
-    #[instrument(name = "rate_limiter.is_locked", skip(self), fields(email = %email))]
-    pub async fn is_locked(&self, email: &str) -> AppResult<Option<i64>> {
-        let lock_key = Self::lock_key(email);
-        let is_blocked: bool = self.redis.clone().exists(&lock_key).await?;
-
-        if is_blocked {
-            let ttl: i64 = self.redis.clone().ttl(&lock_key).await?;
-            return Ok(Some(ttl));
-        }
-
-        Ok(None)
-    }
-
-    /// Record a failed login attempt. Increments counter and locks account if max attempts reached.
-    /// Sends notification email when account is locked.
-    #[instrument(
-        name = "rate_limiter.record_failed_attempt",
-        skip(self),
-        fields(email = %email, max_attempts = %max_attempts)
-    )]
+    #[instrument(name = "login_rate_limiter.record_failed_attempt", skip(self))]
     pub async fn record_failed_attempt(
         &self,
         email: &str,
         username: &str,
-        max_attempts: u32,
-    ) -> AppResult<RateLimit> {
-        let attempts_key = Self::attempts_key(email);
-        let lock_key = Self::lock_key(email);
+    ) -> AppResult<LoginRateLimitStatus> {
+        let key = Self::rate_limit_key(email);
 
-        let new_count: u32 = self.redis.clone().incr(&attempts_key, 1).await?;
-        self.redis
-            .clone()
-            .expire::<_, ()>(&attempts_key, ATTEMPTS_EXPIRY_SECS as i64)
+        let result = self
+            .redis
+            .check_rate_limit(&key, MAX_LOGIN_ATTEMPTS, ATTEMPTS_WINDOW_SECS)
             .await?;
 
-        if new_count >= max_attempts {
-            self.redis
-                .clone()
-                .set_ex::<_, _, ()>(&lock_key, "locked", LOCK_DURATION_SECS)
+        if !result.allowed {
+            self.redis.lock(&key, LOCK_DURATION_SECS).await?;
+
+            let unlock_token = self
+                .token_store
+                .generate_and_store_token("unlock", email, LOCK_DURATION_SECS)
                 .await?;
-
-            self.redis.clone().del::<_, ()>(&attempts_key).await?;
-
-            let unlock_token = self.generate_unlock_token(email).await?;
 
             let email_payload = EmailPayload {
                 to_email: email.to_string(),
@@ -98,57 +78,38 @@ impl RateLimiterService {
             };
 
             if let Err(e) = self.email_service.send_async(email_payload).await {
-                warn!(error = %e, "Failed to send account locked notification email");
+                warn!(error = %e, "Failed to send account locked notification");
             }
 
-            return Ok(RateLimit::Locked {
+            return Ok(LoginRateLimitStatus::Locked {
                 retry_after: LOCK_DURATION_SECS as i64,
             });
         }
 
-        Ok(RateLimit::Allowed {
-            remaining: max_attempts - new_count,
+        Ok(LoginRateLimitStatus::Allowed {
+            remaining: result.remaining,
         })
     }
 
-    #[instrument(name = "rate_limiter.clear_attempts", skip(self), fields(email = %email))]
+    #[instrument(name = "login_rate_limiter.clear_attempts", skip(self))]
     pub async fn clear_attempts(&self, email: &str) -> AppResult<()> {
-        let attempts_key = Self::attempts_key(email);
-        self.redis.clone().del::<_, ()>(&attempts_key).await?;
-        Ok(())
+        let key = Self::rate_limit_key(email);
+        self.redis.clear_attempts(&key).await
     }
 
-    #[instrument(name = "unlock_token.generate_unlock_token", skip(self), fields(email = %email))]
-    pub async fn generate_unlock_token(&self, email: &str) -> AppResult<String> {
-        let token = Uuid::new_v4().to_string();
-        let key = Self::unlock_token_key(&token);
-
-        self.redis
-            .clone()
-            .set_ex::<_, _, ()>(&key, email, LOCK_DURATION_SECS)
-            .await?;
-
-        Ok(token)
-    }
-
-    #[instrument(name = "unlock_token.unlock_with_token", skip(self, token))]
+    #[instrument(name = "login_rate_limiter.unlock_with_token", skip(self, token))]
     pub async fn unlock_with_token(&self, token: &str) -> AppResult<String> {
-        let key = Self::unlock_token_key(token);
+        let email = self
+            .token_store
+            .get_token_value("unlock", token)
+            .await?
+            .ok_or_else(|| AppError::BadRequest("Invalid or expired unlock token".to_string()))?;
 
-        let email: Option<String> = self.redis.clone().get(&key).await?;
+        let key = Self::rate_limit_key(&email);
+        self.redis.unlock(&key).await?;
 
-        if let Some(email) = email {
-            let lock_key = Self::lock_key(&email);
-            self.redis.clone().del::<_, ()>(&lock_key).await?;
+        self.token_store.delete_token("unlock", token).await?;
 
-            let attempts_key = Self::attempts_key(&email);
-            self.redis.clone().del::<_, ()>(&attempts_key).await?;
-
-            self.redis.clone().del::<_, ()>(&key).await?;
-
-            Ok(email)
-        } else {
-            Err(AppError::Redis("Invalid token".to_string()))
-        }
+        Ok(email)
     }
 }
