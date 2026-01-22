@@ -12,9 +12,10 @@ const props = defineProps<{
     type?: string
 }>()
 
-const isInvalid = computed(() => {
-    return props.field.state.meta.isTouched && !props.field.state.meta.isValid
-})
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function isInvalid(field: any) {
+    return field.state.meta.isTouched && !field.state.meta.isValid
+}
 </script>
 
 <template>
@@ -31,6 +32,6 @@ const isInvalid = computed(() => {
                 <slot name="addon" />
             </InputGroupAddon>
         </InputGroup>
-        <FieldError v-if="isInvalid" :errors="field.state.meta.errors" />
+        <FieldError v-if="isInvalid(field)" :errors="field.state.meta.errors" />
     </Field>
 </template>
