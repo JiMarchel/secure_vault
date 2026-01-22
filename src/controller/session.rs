@@ -66,7 +66,7 @@ pub async fn resend_otp_with_session(
     let user = user_use_case.get_user_by_id(user_id).await?;
 
     let res = otp_use_case
-        .resend_verification_otp(user_id, &user.email, &user.username)
+        .resend_otp_verification(user_id, &user.email, &user.username)
         .await?;
 
     Ok(Json(res))
@@ -92,7 +92,7 @@ pub async fn check_session(
     State(auth_use_case): State<Arc<AuthUseCase>>,
     session: Session,
 ) -> AppResult<Json<SuccessResponse<CheckSessionResponse>>> {
-    let status = auth_use_case.check_session_status(session).await?;
+    let status = auth_use_case.check_session_user(session).await?;
 
     Ok(Json(SuccessResponse {
         data: Some(status),
