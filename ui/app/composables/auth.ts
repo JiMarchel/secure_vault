@@ -110,39 +110,39 @@ export function useAuth() {
   async function unlockVault(password: string): Promise<void> {
     const { $api } = useNuxtApp();
 
+    const identifierResponse = await $api<SuccessResponse<Identifier>>(
+      `${config.public.apiBaseUrl}/user/identifier`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: { email: user?.value?.email },
+      },
+    );
+
+    if (!identifierResponse.data) {
+      throw new AuthError("Failed to get vault data");
+    }
+
+    let dekResult;
     try {
-      const identifierResponse = await $api<SuccessResponse<Identifier>>(
-        `${config.public.apiBaseUrl}/user/identifier`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: { email: user?.value?.email },
-        },
-      );
-
-      if (!identifierResponse.data) {
-        throw new AuthError("Failed to get vault data");
-      }
-
-      const dekResult = await decryptUserIdentifier(
+      dekResult = await decryptUserIdentifier(
         password,
         identifierResponse.data,
       );
-
-      setDek(dekResult.dek);
-      needsUnlock.value = false;
-
-      toast.success("Vault unlocked successfully");
-    } catch (error) {
-      try {
-        await $api(`${config.public.apiBaseUrl}/auth/report-failed`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: { email: user?.value?.email },
-        });
-      } catch {}
-      await errorHelper(error);
+    } catch (decryptError) {
+      // Use $fetch directly to avoid $api's 401 retry interceptor
+      await $fetch(`${config.public.apiBaseUrl}/auth/report-failed`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: { email: user?.value?.email },
+      }).catch(() => {}); // Ignore errors from report-failed
+      throw new AuthError("Wrong password");
     }
+
+    setDek(dekResult.dek);
+    needsUnlock.value = false;
+
+    toast.success("Vault unlocked successfully");
   }
 
   async function logout(silent = false): Promise<void> {
