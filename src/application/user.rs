@@ -42,6 +42,7 @@ impl UserUseCase {
             .ok_or_else(|| AppError::NotFound("User not found".into()))
     }
 
+    #[instrument(name = "use_case.get_user_identifier", skip(self), fields(email = %email))]
     pub async fn get_user_identifier(&self, email: &str) -> AppResult<UserIdentifier> {
         self.user_persistence
             .get_user_identifier(email)
