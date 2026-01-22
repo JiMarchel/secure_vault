@@ -37,8 +37,8 @@ impl OtpUseCase {
         }
     }
 
-    #[instrument(name = "use_case.send_verification_otp", skip(self, username, email))]
-    pub async fn send_verification_otp(
+    #[instrument(name = "use_case.otp.send_otp_verification", skip(self, username, email))]
+    pub async fn send_otp_verification(
         &self,
         user_id: Uuid,
         username: &str,
@@ -54,8 +54,8 @@ impl OtpUseCase {
         })
     }
 
-    #[instrument(name = "use_case.resend_verification_otp", skip(self, username, email))]
-    pub async fn resend_verification_otp(
+    #[instrument(name = "use_case.otp.resend_otp_verification", skip(self, username, email))]
+    pub async fn resend_otp_verification(
         &self,
         user_id: Uuid,
         email: &str,
@@ -74,18 +74,18 @@ impl OtpUseCase {
         })
     }
 
-    #[instrument(name = "use_case.get_otp_status", skip(self))]
+    #[instrument(name = "use_case.otp.get_otp_status", skip(self))]
     pub async fn get_otp_status(
         &self,
         user_id: Uuid,
     ) -> AppResult<SuccessResponse<OtpStatusResponse>> {
-        let otp = self.otp_persistence.get_otp(user_id).await?;
+        let otp = self.otp_persistence.find_by_id(user_id).await?;
 
         let (has_otp, expires_at) = match otp {
             Some(record) => {
                 let is_expired = record.expires_at < Utc::now();
                 if is_expired {
-                    self.otp_persistence.delete_otp(user_id).await?;
+                    self.otp_persistence.delete_by_id(user_id).await?;
                     (false, None)
                 } else {
                     (true, Some(record.expires_at))
@@ -111,12 +111,12 @@ impl OtpUseCase {
         })
     }
 
-    #[instrument(name = "use_case.verify_otp", skip(self, code))]
+    #[instrument(name = "use_case.otp.verify_otp", skip(self, code))]
     pub async fn verify_otp(&self, user_id: Uuid, code: &str) -> AppResult<SuccessResponse<()>> {
         self.otp_service.verify(user_id, code).await?;
 
         self.user_persistence
-            .update_email_verification(user_id)
+            .update_email_verified_by_id(user_id)
             .await?;
 
         Ok(SuccessResponse {
