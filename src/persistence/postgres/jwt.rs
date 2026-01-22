@@ -12,10 +12,10 @@ use crate::{
 #[async_trait]
 impl JwtPersistence for PostgresPersistence {
     #[instrument(
-        name = "persistence.create_refresh_token",
+        name = "persistence.jwt.insert_rt",
         skip(self, token, user_id, token_family)
     )]
-    async fn create_refresh_token(
+    async fn insert_rt(
         &self,
         user_id: Uuid,
         token: &str,
@@ -43,8 +43,8 @@ impl JwtPersistence for PostgresPersistence {
         Ok(())
     }
 
-    #[instrument(name = "persistence.get_refresh_token", skip(self, user_id))]
-    async fn get_refresh_token(&self, user_id: Uuid) -> AppResult<Option<StoredRefreshToken>> {
+    #[instrument(name = "persistence.jwt.find_rt_by_id", skip(self, user_id))]
+    async fn find_rt_by_id(&self, user_id: Uuid) -> AppResult<Option<StoredRefreshToken>> {
         let row = sqlx::query(
             r#"
             SELECT token, token_family, is_revoked
@@ -63,8 +63,8 @@ impl JwtPersistence for PostgresPersistence {
         }))
     }
 
-    #[instrument(name = "persistence.revoke_token_family", skip(self, user_id))]
-    async fn revoke_token_family(&self, user_id: Uuid) -> AppResult<()> {
+    #[instrument(name = "persistence.jwt.revoke_token_family_by_id", skip(self, user_id))]
+    async fn revoke_token_family_by_id(&self, user_id: Uuid) -> AppResult<()> {
         sqlx::query(
             r#"
             UPDATE refresh_tokens 
@@ -79,8 +79,8 @@ impl JwtPersistence for PostgresPersistence {
         Ok(())
     }
 
-    #[instrument(name = "persistence.delete_refresh_token", skip(self, user_id))]
-    async fn delete_refresh_token(&self, user_id: Uuid) -> AppResult<()> {
+    #[instrument(name = "persistence.jwt.delete_rt_by_id", skip(self, user_id))]
+    async fn delete_rt_by_id(&self, user_id: Uuid) -> AppResult<()> {
         sqlx::query("DELETE FROM refresh_tokens WHERE user_id = $1")
             .bind(user_id)
             .execute(&self.pool)
