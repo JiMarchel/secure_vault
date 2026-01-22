@@ -53,6 +53,11 @@ export default defineNuxtPlugin(() => {
         return;
       }
 
+      // Don't retry on report-failed - its 401 is intentional (wrong password)
+      if (String(request).includes("/auth/report-failed")) {
+        return;
+      }
+
       if (!isRefreshing) {
         isRefreshing = true;
 
