@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { Check, CircleCheck, Copy, Globe, HelpCircle, KeyRound, LockKeyhole, Mail, RefreshCw, Shield, X } from 'lucide-vue-next';
-import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupInput, InputGroupTextarea } from '../ui/input-group';
+import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from '../ui/input-group';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
 import { Switch } from '../ui/switch';
@@ -13,7 +13,12 @@ import { useForm } from '@tanstack/vue-form';
 import { addPassword } from '~/utils/validation/vaults';
 import { FieldGroup, FieldLabel, FormInput } from '../ui/field';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '../ui/tooltip';
+import { encryptVaultItem } from '~/lib/wasm/vault';
 
+//   const decryptedVault = await decryptVaultItem(dek, encryptedVault)
+// console.log(JSON.parse(decryptedVault.plaintext))
+
+const { useDek } = useAuth()
 const isGeneratePassword = ref(false)
 const generatePasswordOpt = reactive({
     length: [12],
@@ -120,7 +125,10 @@ const addPasswordForm = useForm({
         onSubmit: addPassword
     },
     onSubmit: async ({ value }) => {
-        console.log(value)
+        const dek = useDek()
+        const encryptedVault = await encryptVaultItem(dek, JSON.stringify(value))
+        console.log(encryptedVault)
+
     },
 })
 </script>
@@ -236,7 +244,7 @@ const addPasswordForm = useForm({
             <addPasswordForm.Field name="websiteOrApp" v-slot="{ field }">
                 <FormInput :field="field" placeholder="Website or Apps name">
                     <template #label>
-                        <FieldLabel>Website or Apps</FieldLabel>
+                        <FieldLabel for="websiteOrApp">Website or Apps</FieldLabel>
                     </template>
                     <template #icon>
                         <Globe />
