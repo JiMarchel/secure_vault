@@ -10,24 +10,21 @@ use super::RedisPersistence;
 
 #[async_trait]
 pub trait OtpPersistence: Send + Sync {
-    async fn create_otp(
+    async fn insert(
         &self,
         user_id: Uuid,
         code: &str,
         expires_at: DateTime<Utc>,
     ) -> AppResult<()>;
-
-    async fn get_otp(&self, user_id: Uuid) -> AppResult<Option<OtpRecord>>;
-
-    async fn delete_otp(&self, user_id: Uuid) -> AppResult<()>;
-
-    async fn verify_and_delete_otp(&self, user_id: Uuid, code: &str) -> AppResult<bool>;
+    async fn find_by_id(&self, user_id: Uuid) -> AppResult<Option<OtpRecord>>;
+    async fn delete_by_id(&self, user_id: Uuid) -> AppResult<()>;
+    async fn verify_and_delete_by_id(&self, user_id: Uuid, code: &str) -> AppResult<bool>;
 }
 
 #[async_trait]
 impl OtpPersistence for RedisPersistence {
-    #[instrument(name = "redis.otp.create", skip(self, code))]
-    async fn create_otp(
+    #[instrument(name = "redis.otp.insert", skip(self, code))]
+    async fn insert(
         &self,
         user_id: Uuid,
         code: &str,
@@ -56,8 +53,8 @@ impl OtpPersistence for RedisPersistence {
         Ok(())
     }
 
-    #[instrument(name = "redis.otp.get", skip(self))]
-    async fn get_otp(&self, user_id: Uuid) -> AppResult<Option<OtpRecord>> {
+    #[instrument(name = "redis.otp.find_by_id", skip(self))]
+    async fn find_by_id(&self, user_id: Uuid) -> AppResult<Option<OtpRecord>> {
         let key = format!("otp:{}", user_id);
 
         let value: Option<String> = self.conn.clone().get(&key).await?;
@@ -68,7 +65,7 @@ impl OtpPersistence for RedisPersistence {
 
                 // Double check expiration
                 if record.expires_at < Utc::now() {
-                    self.delete_otp(user_id).await?;
+                    self.delete_by_id(user_id).await?;
                     return Ok(None);
                 }
 
@@ -78,16 +75,16 @@ impl OtpPersistence for RedisPersistence {
         }
     }
 
-    #[instrument(name = "redis.otp.delete", skip(self))]
-    async fn delete_otp(&self, user_id: Uuid) -> AppResult<()> {
+    #[instrument(name = "redis.otp.delete_by_id", skip(self))]
+    async fn delete_by_id(&self, user_id: Uuid) -> AppResult<()> {
         let key = format!("otp:{}", user_id);
         self.conn.clone().del::<_, ()>(&key).await?;
         Ok(())
     }
 
-    #[instrument(name = "redis.otp.verify_and_delete", skip(self, code))]
-    async fn verify_and_delete_otp(&self, user_id: Uuid, code: &str) -> AppResult<bool> {
-        let record = match self.get_otp(user_id).await? {
+    #[instrument(name = "redis.otp.verify_and_delete_by_id", skip(self, code))]
+    async fn verify_and_delete_by_id(&self, user_id: Uuid, code: &str) -> AppResult<bool> {
+        let record = match self.find_by_id(user_id).await? {
             Some(r) => r,
             None => return Ok(false),
         };
@@ -95,7 +92,7 @@ impl OtpPersistence for RedisPersistence {
         let is_valid = record.code == code && record.expires_at > Utc::now();
 
         if is_valid {
-            self.delete_otp(user_id).await?;
+            self.delete_by_id(user_id).await?;
         }
 
         Ok(is_valid)
