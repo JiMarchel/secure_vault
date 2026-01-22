@@ -65,7 +65,7 @@ impl LoginRateLimiterService {
 
             let unlock_token = self
                 .token_store
-                .generate_and_store_token("unlock", email, LOCK_DURATION_SECS)
+                .generate_and_store("unlock", email, LOCK_DURATION_SECS)
                 .await?;
 
             let email_payload = EmailPayload {
@@ -101,14 +101,14 @@ impl LoginRateLimiterService {
     pub async fn unlock_with_token(&self, token: &str) -> AppResult<String> {
         let email = self
             .token_store
-            .get_token_value("unlock", token)
+            .find("unlock", token)
             .await?
             .ok_or_else(|| AppError::BadRequest("Invalid or expired unlock token".to_string()))?;
 
         let key = Self::rate_limit_key(&email);
         self.redis.unlock(&key).await?;
 
-        self.token_store.delete_token("unlock", token).await?;
+        self.token_store.delete("unlock", token).await?;
 
         Ok(email)
     }
