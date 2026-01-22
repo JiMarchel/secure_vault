@@ -82,7 +82,7 @@ impl OtpService {
         let expires_at = chrono::Utc::now() + chrono::Duration::minutes(OTP_VALIDITY_MINUTES);
 
         self.otp_persistence
-            .create_otp(user_id, &otp_code, expires_at)
+            .insert(user_id, &otp_code, expires_at)
             .await?;
 
         let email_payload = EmailPayload {
@@ -95,7 +95,7 @@ impl OtpService {
 
         if let Err(e) = self.email_service.send_async(email_payload).await {
             warn!(error = %e, "Failed to send OTP email");
-            self.otp_persistence.delete_otp(user_id).await?;
+            self.otp_persistence.delete_by_id(user_id).await?;
             return Err(e);
         }
 
@@ -145,7 +145,7 @@ impl OtpService {
         let expires_at = chrono::Utc::now() + chrono::Duration::minutes(OTP_VALIDITY_MINUTES);
 
         self.otp_persistence
-            .create_otp(user_id, &otp_code, expires_at)
+            .insert(user_id, &otp_code, expires_at)
             .await?;
 
         let email_payload = EmailPayload {
@@ -158,7 +158,7 @@ impl OtpService {
 
         if let Err(e) = self.email_service.send_async(email_payload).await {
             warn!(error = %e, "Failed to send OTP email");
-            self.otp_persistence.delete_otp(user_id).await?;
+            self.otp_persistence.delete_by_id(user_id).await?;
             return Err(e);
         }
 
@@ -187,7 +187,7 @@ impl OtpService {
         // Verify OTP
         let is_valid = self
             .otp_persistence
-            .verify_and_delete_otp(user_id, code)
+            .verify_and_delete_by_id(user_id, code)
             .await?;
 
         if !is_valid {
