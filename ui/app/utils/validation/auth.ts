@@ -20,7 +20,7 @@ export const login = z.object({
 
 
 export const signUp = z.object({
-  username: z.string().min(3).max(256, "Username is too long"),
+  username: z.string().min(3).max(100, "Username is too long"),
   email: z
     .email("Invalid email address")
     .refine(
@@ -38,7 +38,7 @@ export const verifPassword = z
     password: z
       .string()
       .min(8, "Password must be at least 8 characters long.")
-      .max(100, "Password must be at most 100 characters long.")
+      .max(64, "Password must be at most 64 characters long.")
       .refine((val: string) => /[A-Z]/.test(val), {
         message: "Password must contain at least one uppercase letter.",
       })
@@ -54,7 +54,7 @@ export const verifPassword = z
     confirmPassword: z
       .string()
       .min(8, "Confirm password must be at least 8 characters long.")
-      .max(100, "Confirm password must be at most 100 characters long."),
+      .max(64, "Confirm password must be at most 64 characters long."),
   })
   .superRefine(
     (
