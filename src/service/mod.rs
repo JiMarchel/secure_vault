@@ -5,3 +5,4 @@ pub mod otp;
 pub mod rate_limiter;
 pub mod session;
 pub mod user;
+pub mod vault;
