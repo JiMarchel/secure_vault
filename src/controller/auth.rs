@@ -16,7 +16,7 @@ use crate::{
         jwt::{AuthTokens, Claims},
         otp::VerifyOtpPayload,
         response::SuccessResponse,
-        user::{UnlockAccount, UserIdentifier, UserInfo},
+        user::{UnlockAccountReq, PublicUser, UserIdentifier},
     },
     service::session::{destroy_session, get_session},
     validation::user::{Email, EmailString, LoginRequest, NewUser, NewUserRequest},
@@ -27,7 +27,7 @@ use time::Duration;
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", post(register))
-        .route("/me", get(get_current_user))
+        .route("/me", get(get_current_public_user))
         .route("/verif/otp", patch(verify_otp))
         .route("/verif/identifier", patch(update_user_identifier))
         .route("/refresh", post(refresh))
@@ -50,7 +50,7 @@ pub async fn register(
     let new_user: NewUser = payload.try_into()?;
 
     let res = auth_use_case
-        .sign_up(new_user.username.as_ref(), new_user.email.as_ref(), session)
+        .register_user(new_user.username.as_ref(), new_user.email.as_ref(), session)
         .await?;
 
     Ok(Json(res))
@@ -65,14 +65,14 @@ pub async fn login(
     jar: CookieJar,
     State(auth_use_case): State<Arc<AuthUseCase>>,
     Json(payload): Json<LoginRequest>,
-) -> AppResult<(CookieJar, Json<SuccessResponse<UserInfo>>)> {
+) -> AppResult<(CookieJar, Json<SuccessResponse<PublicUser>>)> {
     let user_email: Email = EmailString {
         email: payload.email,
     }
     .try_into()?;
 
     let res = auth_use_case
-        .login(user_email.as_ref(), &payload.auth_verifier)
+        .login_user(user_email.as_ref(), &payload.auth_verifier)
         .await?;
 
     let access_cookie = Cookie::build(("sv_at", res.1.access_token))
@@ -115,7 +115,7 @@ pub async fn verify_otp(
     let user_id = get_session(session.clone(), "verif_otp").await?;
 
     let res = auth_use_case
-        .verify_user_email(user_id, &payload.otp_code, session)
+        .verify_email_user(user_id, &payload.otp_code, session)
         .await?;
 
     Ok(Json(res))
@@ -198,7 +198,7 @@ pub async fn refresh(
         .map(|cookie| cookie.value().to_owned())
         .ok_or(AppError::Unauthorized("Missing refresh token".to_string()))?;
 
-    let tokens = auth_use_case.refresh_tokens(&refresh_token).await?;
+    let tokens = auth_use_case.refresh_tokens_user(&refresh_token).await?;
 
     let access_cookie = Cookie::build(("sv_at", tokens.access_token.clone()))
         .max_age(Duration::minutes(15))
@@ -251,21 +251,21 @@ pub async fn report_failed_attempt(
 #[instrument(name = "unlock_account", skip(auth_use_case, payload))]
 pub async fn unlock_account(
     State(auth_use_case): State<Arc<AuthUseCase>>,
-    Json(payload): Json<UnlockAccount>,
+    Json(payload): Json<UnlockAccountReq>,
 ) -> AppResult<Json<SuccessResponse<()>>> {
     let res = auth_use_case
-        .unlock_account_with_token(payload.token)
+        .unlock_user_account(payload.token)
         .await?;
 
     Ok(Json(res))
 }
 
-#[instrument(name = "get_current_user", skip(auth_use_case, claims))]
-pub async fn get_current_user(
+#[instrument(name = "get_current_public_user", skip(auth_use_case, claims))]
+pub async fn get_current_public_user(
     claims: Claims,
     State(auth_use_case): State<Arc<AuthUseCase>>,
-) -> AppResult<Json<SuccessResponse<UserInfo>>> {
-    let user = auth_use_case.get_user_info_by_id(claims.sub).await?;
+) -> AppResult<Json<SuccessResponse<PublicUser>>> {
+    let user = auth_use_case.get_public_user_by_id(claims.sub).await?;
 
     Ok(Json(SuccessResponse {
         data: Some(user),
