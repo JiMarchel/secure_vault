@@ -4,3 +4,4 @@ pub mod otp;
 pub mod response;
 pub mod user;
 pub mod rate_limiter;
+pub mod vault;
