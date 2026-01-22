@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem } from '@/components/ui/sidebar'
+import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem } from '@/components/ui/sidebar'
 import { ChevronUp, CirclePlus, CirclePlusIcon, Contact, CreditCard, FileKey, KeyRound, User2 } from 'lucide-vue-next';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Spinner } from './ui/spinner';
@@ -49,7 +49,7 @@ const { user, logout, isLoading } = useAuth()
                     <SidebarMenu>
                         <SidebarMenuItem>
                             <SidebarMenuButton>
-                                <CirclePlusIcon/>
+                                <CirclePlusIcon />
                                 <span>Add Vault</span>
                             </SidebarMenuButton>
                             <SidebarMenuSub>
@@ -87,7 +87,8 @@ const { user, logout, isLoading } = useAuth()
                                 <ClientOnly>
                                     <Spinner v-if="isLoading" />
                                     <Button v-else @click="logout" class="cursor-pointer w-full" variant="destructive"
-                                        size="sm">Sign out</Button>
+                                        size="sm">Sign
+                                        out</Button>
                                 </ClientOnly>
                             </DropdownMenuItem>
                         </DropdownMenuContent>
