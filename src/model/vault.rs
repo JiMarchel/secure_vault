@@ -19,12 +19,12 @@ pub enum ItemType {
 }
 
 impl ItemType {
-    pub fn string(&self) -> String {
+    pub fn string(&self) -> &str {
         match self {
-            ItemType::Password => format!("password"),
-            ItemType::CreditCard => format!("credit-card"),
-            ItemType::Note => format!("note"),
-            ItemType::Contact => format!("contact"),
+            ItemType::Password => "password",
+            ItemType::CreditCard => "credit-card",
+            ItemType::Note => "note",
+            ItemType::Contact => "contact",
         }
     }
 }
