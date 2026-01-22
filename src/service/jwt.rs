@@ -10,15 +10,15 @@ use crate::model::{
 
 #[async_trait]
 pub trait JwtPersistence: Send + Sync {
-    async fn create_refresh_token(
+    async fn insert_rt(
         &self,
         user_id: Uuid,
         token: &str,
         token_family: Uuid,
     ) -> AppResult<()>;
-    async fn get_refresh_token(&self, user_id: Uuid) -> AppResult<Option<StoredRefreshToken>>;
-    async fn revoke_token_family(&self, user_id: Uuid) -> AppResult<()>;
-    async fn delete_refresh_token(&self, user_id: Uuid) -> AppResult<()>;
+    async fn find_rt_by_id(&self, user_id: Uuid) -> AppResult<Option<StoredRefreshToken>>;
+    async fn revoke_token_family_by_id(&self, user_id: Uuid) -> AppResult<()>;
+    async fn delete_rt_by_id(&self, user_id: Uuid) -> AppResult<()>;
 }
 
 pub struct JwtService {
