@@ -10,7 +10,7 @@ use crate::{
         app_error::{AppError, AppResult},
         jwt::AuthTokens,
         response::SuccessResponse,
-        user::{CheckSessionResponse, User, UserInfo},
+        user::{CheckSessionResponse, PublicUser, User},
     },
     persistence::redis::otp::OtpPersistence,
     service::{
@@ -52,21 +52,21 @@ impl AuthUseCase {
     }
 
     #[instrument(
-        name= "use_case.sign_up",
+        name= "use_case.auth.register_user",
         skip(self, session, username, email),
         fields(email=%email, username=%username)
     )]
-    pub async fn sign_up(
+    pub async fn register_user(
         &self,
         username: &str,
         email: &str,
         session: Session,
     ) -> AppResult<SuccessResponse<NewUserRequest>> {
-        if let Some(user_exists) = self.user_persistence.get_user_by_email(email).await? {
+        if let Some(user_exists) = self.user_persistence.find_by_email(email).await? {
             return self.handle_existing_user(user_exists, session).await;
         }
 
-        let user_id = self.user_persistence.create_user(username, email).await?;
+        let user_id = self.user_persistence.insert(username, email).await?;
 
         self.otp_service
             .send_verification(user_id, email, username)
@@ -83,15 +83,15 @@ impl AuthUseCase {
     }
 
     #[instrument(
-        name = "use_case.login",
+        name = "use_case.auth.login_user",
         skip(self, auth_verifier),
         fields(email = %email)
     )]
-    pub async fn login(
+    pub async fn login_user(
         &self,
         email: &str,
         auth_verifier: &str,
-    ) -> AppResult<(UserInfo, AuthTokens)> {
+    ) -> AppResult<(PublicUser, AuthTokens)> {
         if let Some(retry_after) = self.login_rate_limiter.check_if_locked(email).await? {
             return Err(AppError::TooManyRequests {
                 message: format!("Try again in {} seconds", retry_after),
@@ -99,26 +99,23 @@ impl AuthUseCase {
             });
         }
 
-        let (stored_verifier, username) = match self
-            .user_persistence
-            .get_auth_verifier_by_email(email)
-            .await?
-        {
-            Some(verifier) => {
-                let username = self
-                    .user_persistence
-                    .get_user_by_email(email)
-                    .await?
-                    .map(|u| u.username)
-                    .unwrap_or_default();
-                (verifier, username)
-            }
-            None => {
-                return Err(AppError::Unauthorized(
-                    "Wrong email or password".to_string(),
-                ));
-            }
-        };
+        let (stored_verifier, username) =
+            match self.user_persistence.find_verifier_by_email(email).await? {
+                Some(verifier) => {
+                    let username = self
+                        .user_persistence
+                        .find_by_email(email)
+                        .await?
+                        .map(|u| u.username)
+                        .unwrap_or_default();
+                    (verifier, username)
+                }
+                None => {
+                    return Err(AppError::Unauthorized(
+                        "Wrong email or password".to_string(),
+                    ));
+                }
+            };
 
         // Constant-time comparison to prevent timing attacks
         if !constant_time_eq(auth_verifier.as_bytes(), stored_verifier.as_bytes()) {
@@ -135,7 +132,7 @@ impl AuthUseCase {
 
         let user = self
             .user_persistence
-            .get_user_info_by_email(email)
+            .find_public_user_by_email(email)
             .await?
             .ok_or(AppError::Unauthorized(
                 "Wrong email or password".to_string(),
@@ -149,7 +146,7 @@ impl AuthUseCase {
             .create_refresh_token(user.id, email, token_family)?;
 
         self.jwt_persistence
-            .create_refresh_token(user.id, &refresh_token, token_family)
+            .insert_rt(user.id, &refresh_token, token_family)
             .await?;
 
         Ok((
@@ -161,7 +158,7 @@ impl AuthUseCase {
         ))
     }
 
-    #[instrument(name = "use_case.handle_existing_user", skip(self, user, session))]
+    #[instrument(name = "use_case.user.handle_existing_user", skip(self, user, session))]
     async fn handle_existing_user(
         &self,
         user: User,
@@ -202,10 +199,10 @@ impl AuthUseCase {
     }
 
     #[instrument(
-        name = "use_case.verify_user_email",
+        name = "use_case.auth.verify_email_user",
         skip(self, session, otp_code, user_id)
     )]
-    pub async fn verify_user_email(
+    pub async fn verify_email_user(
         &self,
         user_id: Uuid,
         otp_code: &str,
@@ -213,7 +210,7 @@ impl AuthUseCase {
     ) -> AppResult<SuccessResponse<()>> {
         let otp_record = self
             .otp_persistence
-            .get_otp(user_id)
+            .find_by_id(user_id)
             .await?
             .ok_or(AppError::BadRequest("Invalid user id.".to_string()))?;
 
@@ -226,9 +223,9 @@ impl AuthUseCase {
         }
 
         self.user_persistence
-            .update_email_verification(user_id)
+            .update_email_verified_by_id(user_id)
             .await?;
-        self.otp_persistence.delete_otp(user_id).await?;
+        self.otp_persistence.delete_by_id(user_id).await?;
 
         remove_session(session.clone(), "verif_otp").await?;
         insert_session(session, "verif_password", user_id).await?;
@@ -240,7 +237,7 @@ impl AuthUseCase {
     }
 
     #[instrument(
-        name = "use_case.update_user_identifier",
+        name = "use_case.auth.update_user_identifier",
         skip(self, session, encrypted_dek, nonce, salt, argon2_params, auth_verifier),
         fields(user_id = %user_id)
     )]
@@ -255,7 +252,7 @@ impl AuthUseCase {
         session: Session,
     ) -> AppResult<AuthTokens> {
         self.user_persistence
-            .update_user_identifier(
+            .update_identifier_by_id(
                 encrypted_dek,
                 nonce,
                 salt,
@@ -269,7 +266,7 @@ impl AuthUseCase {
 
         let user = self
             .user_persistence
-            .get_user_by_id(user_id)
+            .find_by_id(user_id)
             .await?
             .ok_or(AppError::NotFound("User not found".to_string()))?;
 
@@ -281,7 +278,7 @@ impl AuthUseCase {
                 .create_refresh_token(user_id, &user.email, token_family)?;
 
         self.jwt_persistence
-            .create_refresh_token(user_id, &refresh_token, token_family)
+            .insert_rt(user_id, &refresh_token, token_family)
             .await?;
 
         Ok(AuthTokens {
@@ -290,18 +287,18 @@ impl AuthUseCase {
         })
     }
 
-    #[instrument(name = "use_case.refresh_tokens", skip(self, refresh_token))]
-    pub async fn refresh_tokens(&self, refresh_token: &str) -> AppResult<AuthTokens> {
+    #[instrument(name = "use_case.auth.refresh_tokens_user", skip(self, refresh_token))]
+    pub async fn refresh_tokens_user(&self, refresh_token: &str) -> AppResult<AuthTokens> {
         let claims = self.jwt_service.verify_refresh_token(refresh_token)?;
         let user_id = claims.sub;
         let token_family = claims.jti;
 
-        let stored = self.jwt_persistence.get_refresh_token(user_id).await?;
+        let stored = self.jwt_persistence.find_rt_by_id(user_id).await?;
 
         match stored {
             Some(stored) if stored.is_revoked => {
                 // Token family was revoked = reuse detected, force re-login
-                self.jwt_persistence.delete_refresh_token(user_id).await?;
+                self.jwt_persistence.delete_rt_by_id(user_id).await?;
                 Err(AppError::Unauthorized(
                     "Session revoked. Please login again.".to_string(),
                 ))
@@ -310,7 +307,7 @@ impl AuthUseCase {
                 // Valid token - rotate with same family
                 let user = self
                     .user_persistence
-                    .get_user_by_id(user_id)
+                    .find_by_id(user_id)
                     .await?
                     .ok_or(AppError::NotFound("User not found".to_string()))?;
 
@@ -322,7 +319,7 @@ impl AuthUseCase {
                         .create_refresh_token(user_id, &user.email, token_family)?;
 
                 self.jwt_persistence
-                    .create_refresh_token(user_id, &new_refresh_token, token_family)
+                    .insert_rt(user_id, &new_refresh_token, token_family)
                     .await?;
 
                 Ok(AuthTokens {
@@ -333,7 +330,7 @@ impl AuthUseCase {
             Some(_) => {
                 // Token doesn't match = reuse attempt with old token
                 // Revoke entire family to protect user
-                self.jwt_persistence.revoke_token_family(user_id).await?;
+                self.jwt_persistence.revoke_token_family_by_id(user_id).await?;
                 Err(AppError::Unauthorized(
                     "Token reuse detected. All sessions revoked.".to_string(),
                 ))
@@ -342,9 +339,9 @@ impl AuthUseCase {
         }
     }
 
-    #[instrument(name = "use_case.logout_user", skip(self))]
+    #[instrument(name = "use_case.auth.logout_user", skip(self))]
     pub async fn logout_user(&self, user_id: Uuid) -> AppResult<SuccessResponse<()>> {
-        self.jwt_persistence.delete_refresh_token(user_id).await?;
+        self.jwt_persistence.delete_rt_by_id(user_id).await?;
 
         Ok(SuccessResponse {
             data: None,
@@ -352,8 +349,8 @@ impl AuthUseCase {
         })
     }
 
-    #[instrument(name = "use_case.check_session_status", skip(self, session))]
-    pub async fn check_session_status(&self, session: Session) -> AppResult<CheckSessionResponse> {
+    #[instrument(name = "use_case.auth.check_session_user", skip(self, session))]
+    pub async fn check_session_user(&self, session: Session) -> AppResult<CheckSessionResponse> {
         if get_session(session.clone(), "verif_otp").await.is_ok() {
             return Ok(CheckSessionResponse {
                 authenticated: false,
@@ -374,13 +371,13 @@ impl AuthUseCase {
         })
     }
 
-    #[instrument(name = "use_case.is_locked", skip(self), fields(email = %email))]
-    pub async fn is_locked(&self, email: &str) -> AppResult<Option<i64>> {
+    #[instrument(name = "use_case.auth.is_user_locked", skip(self), fields(email = %email))]
+    pub async fn is_user_locked(&self, email: &str) -> AppResult<Option<i64>> {
         self.login_rate_limiter.check_if_locked(email).await
     }
 
-    #[instrument(name = "use_case_unlock_account_with_token", skip(self, token))]
-    pub async fn unlock_account_with_token(&self, token: String) -> AppResult<SuccessResponse<()>> {
+    #[instrument(name = "use_case.auth.unlock_user_account", skip(self, token))]
+    pub async fn unlock_user_account(&self, token: String) -> AppResult<SuccessResponse<()>> {
         let email = self
             .login_rate_limiter
             .unlock_with_token(&token)
@@ -393,7 +390,7 @@ impl AuthUseCase {
         })
     }
 
-    #[instrument(name = "use_case.report_failed_attempt", skip(self), fields(email = %email))]
+    #[instrument(name = "use_case.auth.report_failed_attempt", skip(self), fields(email = %email))]
     pub async fn report_failed_attempt(&self, email: &str) -> AppResult<()> {
         if let Some(retry_after) = self.login_rate_limiter.check_if_locked(email).await? {
             return Err(AppError::TooManyRequests {
@@ -407,7 +404,7 @@ impl AuthUseCase {
 
         let username = self
             .user_persistence
-            .get_user_by_email(email)
+            .find_by_email(email)
             .await?
             .map(|u| u.username)
             .unwrap_or_else(|| "User".to_string());
@@ -433,11 +430,11 @@ impl AuthUseCase {
         }
     }
 
-    #[instrument(name = "use_case.get_user_info_by_id", skip(self), fields(user_id = %user_id))]
-    pub async fn get_user_info_by_id(&self, user_id: Uuid) -> AppResult<UserInfo> {
+    #[instrument(name = "use_case.auth.get_public_user_by_id", skip(self), fields(user_id = %user_id))]
+    pub async fn get_public_user_by_id(&self, user_id: Uuid) -> AppResult<PublicUser> {
         let user = self
             .user_persistence
-            .get_user_info_by_id(user_id)
+            .find_public_user_by_id(user_id)
             .await?
             .ok_or(AppError::NotFound("User not found".to_string()))?;
 
