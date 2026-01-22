@@ -23,7 +23,7 @@ pub struct User {
 
 #[derive(Serialize, sqlx::FromRow)]
 #[serde(rename_all = "camelCase")]
-pub struct UserInfo {
+pub struct PublicUser {
     pub id: uuid::Uuid,
     pub username: String,
     pub email: String,
@@ -40,10 +40,9 @@ pub struct UserIdentifier {
 }
 
 #[derive(Debug, Deserialize)]
-pub struct UnlockAccount {
+pub struct UnlockAccountReq {
     pub token: String,
 }
-
 
 impl User {
     pub fn is_pending_password_verification(&self) -> bool {
