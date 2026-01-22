@@ -7,6 +7,7 @@ pub mod auth;
 pub mod health_check;
 pub mod session;
 pub mod user;
+pub mod vault;
 
 pub fn router() -> Router<AppState> {
     Router::new()
