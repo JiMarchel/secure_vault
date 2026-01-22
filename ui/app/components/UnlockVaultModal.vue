@@ -41,10 +41,6 @@ const form = useForm({
 });
 
 const showPassword = ref(false);
-
-function isInvalid(field: any) {
-    return field.state.meta.isTouched && !field.state.meta.isValid
-}
 </script>
 
 <template>
@@ -81,7 +77,6 @@ function isInvalid(field: any) {
                                 </InputGroupButton>
                             </template>
                         </FormInput>
-                        <FieldError v-if="isInvalid(field)" :errors="field.state.meta.errors" />
                     </form.Field>
                 </FieldGroup>
 
