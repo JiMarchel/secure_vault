@@ -18,9 +18,11 @@ async function handleUnlock(password: string) {
 <template>
     <SidebarProvider>
         <AppSidebar />
-        <div>
+        <div class="w-full">
             <SidebarTrigger />
-            <slot />
+            <div class="w-full ">
+                <slot />
+            </div>
             <ClientOnly>
                 <UnlockVaultModal v-if="needsUnlock" :userEmail="user?.email!" @unlock="handleUnlock"
                     @logout="logout" />
