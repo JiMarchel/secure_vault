@@ -14,5 +14,6 @@ pub fn router() -> Router<AppState> {
         .nest("/user", user::router())
         .nest("/auth", auth::router())
         .nest("/session", session::router())
+        .nest("/vault", vault::router())
         .route("/health", get(health_check))
 }
