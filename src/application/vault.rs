@@ -1,18 +1,42 @@
 use std::sync::Arc;
 
-use crate::{model::vault::VaultRequest, service::vault::VaultPersistence};
+use tracing::instrument;
+use uuid::Uuid;
+
+use crate::{
+    model::{
+        app_error::AppResult,
+        vault::{VaultRequest, Vaults},
+    },
+    service::vault::VaultPersistence,
+};
 
 pub struct VaultUseCase {
     vault_persistence: Arc<dyn VaultPersistence>,
 }
 
 impl VaultUseCase {
-    pub fn new(&self, vault_persistence: Arc<dyn VaultPersistence>) -> Self {
+    pub fn new(vault_persistence: Arc<dyn VaultPersistence>) -> Self {
         Self { vault_persistence }
     }
 
-    pub async fn create_vault(&self, vault: VaultRequest) {
-        // self.vault_persistence.insert(user_id, title, encrypted_data, nonce, item_type)
-        todo!()
+    #[instrument(name = "application.vault.create_vault", skip(self, vault), fields(user_id=%user_id))]
+    pub async fn create_vault(&self, user_id: Uuid, vault: VaultRequest) -> AppResult<()> {
+        self.vault_persistence
+            .insert(
+                user_id,
+                vault.title.as_str(),
+                vault.encrypted_data.as_str(),
+                vault.nonce.as_str(),
+                vault.item_type.string(),
+            )
+            .await?;
+
+        Ok(())
+    }
+
+    #[instrument(name = "application.vault.get_all_vaults", skip(self), fields(user_id=%user_id))]
+    pub async fn get_all_vaults(&self, user_id: Uuid) -> AppResult<Vec<Vaults>> {
+        self.vault_persistence.find_all_by_user_id(user_id).await
     }
 }
