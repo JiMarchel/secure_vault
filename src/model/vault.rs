@@ -1,3 +1,4 @@
+use chrono::{NaiveDateTime};
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 use uuid::Uuid;
@@ -11,6 +12,8 @@ pub struct Vaults {
     pub item_type: ItemType,
     pub encrypted_data: String,
     pub nonce: String,
+    pub created_at: NaiveDateTime,
+    pub updated_at: NaiveDateTime,
 }
 
 #[derive(Deserialize)]
