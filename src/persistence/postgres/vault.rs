@@ -1,5 +1,6 @@
 use crate::{
-    model::app_error::AppResult, persistence::postgres::PostgresPersistence,
+    model::{app_error::AppResult, vault::Vaults},
+    persistence::postgres::PostgresPersistence,
     service::vault::VaultPersistence,
 };
 use async_trait::async_trait;
@@ -26,5 +27,15 @@ impl VaultPersistence for PostgresPersistence {
         ).bind(user_id).bind(title).bind(encrypted_data).bind(nonce).bind(item_type).execute(&self.pool).await?;
 
         Ok(())
+    }
+
+    #[instrument(name = "persistence.vault.find_all_by_user_id", skip(self))]
+    async fn find_all_by_user_id(&self, user_id: Uuid) -> AppResult<Vec<Vaults>> {
+        let rows = sqlx::query_as("SELECT * FROM vaults WHERE user_id = $1")
+            .bind(user_id)
+            .fetch_all(&self.pool)
+            .await?;
+
+        Ok(rows)
     }
 }
