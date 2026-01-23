@@ -3,22 +3,39 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Button } from './ui/button';
 import { Spinner } from './ui/spinner';
 
-withDefaults(defineProps<{
+const props = withDefaults(defineProps<{
     title: string
     description?: string
     loading?: boolean
     submitText?: string
     disabled?: boolean
+    open?: boolean
 }>(), {
-    submitText: 'Submit'
+    submitText: 'Submit',
+    open: undefined
 })
 
-const emit = defineEmits(['submit'])
+const emit = defineEmits<{
+    submit: []
+    'update:open': [value: boolean]
+}>()
+
+const isOpen = ref(props.open ?? false)
+
+// Sync with external v-model
+watch(() => props.open, (val) => {
+    if (val !== undefined) isOpen.value = val
+})
+
+function updateOpen(val: boolean) {
+    isOpen.value = val
+    emit('update:open', val)
+}
 </script>
 
 <template>
-    <Dialog>
-        <DialogTrigger as-child>
+    <Dialog :open="isOpen" @update:open="updateOpen">
+        <DialogTrigger v-if="$slots.trigger" as-child>
             <slot name="trigger" />
         </DialogTrigger>
         <DialogContent class="sm:max-w-md">
