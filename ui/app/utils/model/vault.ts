@@ -7,3 +7,9 @@ export interface Vaults {
     createdAt: string;
     updatedAt: string;
 }
+
+export interface PasswordDecrypted {
+    usernameOrEmail: string;
+    password: string;
+    websiteOrApp: string;
+}
