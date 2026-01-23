@@ -10,6 +10,7 @@ const props = defineProps<{
     label?: string
     autocomplete?: string
     type?: string
+    defaultValue?: string
 }>()
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -25,8 +26,9 @@ function isInvalid(field: any) {
             <InputGroupAddon v-if="$slots.icon" align="inline-start">
                 <slot name="icon" />
             </InputGroupAddon>
-            <InputGroupInput :id="field.name" :placeholder="placeholder" :name="field.name" :model-value="field.state.value"
-                :aria-invalid="isInvalid" :autocomplete="autocomplete ?? 'off'" @blur="field.handleBlur"
+            <InputGroupInput :id="field.name" :placeholder="placeholder" :name="field.name"
+                :model-value="field.state.value ?? defaultValue" :aria-invalid="isInvalid"
+                :autocomplete="autocomplete ?? 'off'" @blur="field.handleBlur"
                 @input="field.handleChange(($event.target as HTMLInputElement).value)" :type="type" />
             <InputGroupAddon v-if="$slots.addon" align="inline-end">
                 <slot name="addon" />
