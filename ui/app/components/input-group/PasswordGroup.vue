@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { Check, CircleCheck, Copy, Globe, HelpCircle, KeyRound, LockKeyhole, Mail, RefreshCw, Shield, X } from 'lucide-vue-next';
+import { Check, CircleCheck, Copy, Eye, EyeOff, Globe, HelpCircle, KeyRound, LockKeyhole, Mail, RefreshCw, Shield, X } from 'lucide-vue-next';
 import { InputGroup, InputGroupAddon, InputGroupButton, InputGroupTextarea } from '../ui/input-group';
 import { Label } from '../ui/label';
 import { Button } from '../ui/button';
@@ -14,9 +14,27 @@ import { addPassword } from '~/utils/validation/vaults';
 import { FieldGroup, FieldLabel, FormInput } from '../ui/field';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '../ui/tooltip';
 import { encryptVaultItem } from '~/lib/wasm/vault';
+import { errorHelper } from '~/lib/error-helper';
+import type { SuccessResponse } from '~/utils/model/response';
 
-//   const decryptedVault = await decryptVaultItem(dek, encryptedVault)
-// console.log(JSON.parse(decryptedVault.plaintext))
+interface Props {
+    update?: boolean
+    open?: boolean
+    id?: string
+    title?: string
+    usernameOrEmail?: string
+    password?: string
+    websiteOrApp?: string
+}
+
+const props = withDefaults(defineProps<Props>(), {
+    update: false,
+    open: undefined
+})
+
+const emit = defineEmits<{
+    'update:open': [value: boolean]
+}>()
 
 const { useDek } = useAuth()
 const isGeneratePassword = ref(false)
@@ -114,30 +132,67 @@ watch(isGeneratePassword, (isOpen) => {
     }
 })
 
+const isLoading = ref(false)
+const showPassword = ref(false)
+
+
 const addPasswordForm = useForm({
     defaultValues: {
-        title: "",
-        usernameOrEmail: "",
-        password: "",
-        websiteOrApp: ""
+        title: props.update ? (props.title ?? "") : "",
+        usernameOrEmail: props.update ? (props.usernameOrEmail ?? "") : "",
+        password: props.update ? (props.password ?? "") : "",
+        websiteOrApp: props.update ? (props.websiteOrApp ?? "") : ""
     },
     validators: {
         onSubmit: addPassword
     },
     onSubmit: async ({ value }) => {
-        const dek = useDek()
-        const encryptedVault = await encryptVaultItem(dek, JSON.stringify(value))
-        console.log(encryptedVault)
+        try {
+            isLoading.value = true
 
+            const { $api } = useNuxtApp()
+
+            const credsValue = {
+                usernameOrEmail: value.usernameOrEmail,
+                password: value.password,
+                websiteOrApp: value.websiteOrApp,
+            }
+            const dek = useDek()
+            const encryptedVaultRes = await encryptVaultItem(dek, JSON.stringify(credsValue))
+            const bodyReq = {
+                title: value.title,
+                itemType: "Password",
+                ...encryptedVaultRes
+            }
+
+            const res = await $api<SuccessResponse<void>>("/vault", {
+                body: bodyReq,
+                method: "POST"
+            })
+
+            toast.success(res.message)
+            addPasswordForm.reset()
+
+            const { refreshVaults } = useVaults()
+            await refreshVaults()
+
+        } catch (error) {
+            await errorHelper(error)
+        } finally {
+            isLoading.value = false
+        }
     },
 })
+
 </script>
 
 <template>
-    <FormDialog title='Add Password' description="Add a new password to your vault"
-        @submit="addPasswordForm.handleSubmit">
+    <FormDialog :title="props.update ? 'Edit Password' : 'Add Password'"
+        :description="props.update ? 'Edit your password entry' : 'Add a new password to your vault'" :open="props.open"
+        @update:open="emit('update:open', $event)" @submit="addPasswordForm.handleSubmit" :loading="isLoading"
+        :submitText="props.update ? 'Update Password' : 'Save Password'">
 
-        <template #trigger>
+        <template v-if="!props.update" #trigger>
             <SidebarMenuSubButton>
                 <KeyRound />
                 <span>Password</span>
@@ -149,7 +204,7 @@ const addPasswordForm = useForm({
         <FieldGroup class="space-y-3">
             <div class="space-y-2">
                 <addPasswordForm.Field name="title" v-slot="{ field }">
-                    <FormInput :field="field" placeholder="Title*">
+                    <FormInput :field="field" placeholder="Title*" :defaultValue="props.update ? props.title : ''">
                         <template #icon>
                             <Shield />
                         </template>
@@ -173,7 +228,8 @@ const addPasswordForm = useForm({
                 <FieldLabel>Login Details</FieldLabel>
 
                 <addPasswordForm.Field name="usernameOrEmail" v-slot="{ field }">
-                    <FormInput :field="field" placeholder="Username or email">
+                    <FormInput :field="field" placeholder="Username or email"
+                        :defaultValue="props.update ? props.usernameOrEmail : ''">
                         <template #icon>
                             <Mail />
                         </template>
@@ -181,16 +237,23 @@ const addPasswordForm = useForm({
                 </addPasswordForm.Field>
 
                 <addPasswordForm.Field name="password" v-slot="{ field }">
-                    <FormInput :field="field" placeholder="Password">
+                    <FormInput :field="field" placeholder="Password" :defaultValue="props.update ? props.password : ''"
+                        :type="showPassword ? 'text' : 'password'">
                         <template #icon>
                             <LockKeyhole />
+                        </template>
+                        <template #addon>
+                            <InputGroupButton @click="showPassword = !showPassword" type="button">
+                                <Eye v-if="showPassword" />
+                                <EyeOff v-else />
+                            </InputGroupButton>
                         </template>
                     </FormInput>
                 </addPasswordForm.Field>
             </div>
 
             <Button v-if="!isGeneratePassword" variant="outline" class="w-full" type="button"
-                @click="isGeneratePassword = !isGeneratePassword">
+                @click="isGeneratePassword = !isGeneratePassword" :disabled="isLoading">
                 <KeyRound />
                 Generate Password
             </Button>
@@ -242,7 +305,8 @@ const addPasswordForm = useForm({
             </div>
 
             <addPasswordForm.Field name="websiteOrApp" v-slot="{ field }">
-                <FormInput :field="field" placeholder="Website or Apps name">
+                <FormInput :field="field" placeholder="Website or Apps name"
+                    :defaultValue="props.update ? props.websiteOrApp : ''">
                     <template #label>
                         <FieldLabel for="websiteOrApp">Website or Apps</FieldLabel>
                     </template>
