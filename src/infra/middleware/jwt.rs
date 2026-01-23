@@ -23,7 +23,7 @@ where
 
         let access_token = jar
             .get("sv_at")
-            .ok_or(AppError::Unauthorized("Missing access token".to_string()))?
+            .ok_or(AppError::Unauthorized("Unauthorized".to_string()))?
             .value();
 
         let auth_use_case = Arc::<AuthUseCase>::from_ref(state);
