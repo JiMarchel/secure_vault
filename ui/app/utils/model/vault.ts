@@ -1,4 +1,4 @@
-export interface vaults {
+export interface Vaults {
     id: string;
     title: string;
     encryptedData: string;
