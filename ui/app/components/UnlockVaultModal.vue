@@ -12,7 +12,7 @@ import { Button } from "~/components/ui/button";
 import { Spinner } from "~/components/ui/spinner";
 import { useForm } from "@tanstack/vue-form";
 import { z } from "zod";
-import { FieldError, FieldGroup, FormInput } from "~/components/ui/field";
+import { FieldGroup, FormInput } from "~/components/ui/field";
 import { InputGroupButton } from "./ui/input-group";
 
 const props = defineProps<{
