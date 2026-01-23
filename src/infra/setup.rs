@@ -8,6 +8,7 @@ use tower_sessions_sqlx_store::PostgresStore;
 use crate::application::auth::AuthUseCase;
 use crate::application::otp::OtpUseCase;
 use crate::application::user::UserUseCase;
+use crate::application::vault::VaultUseCase;
 use crate::controller::app_state::AppState;
 use crate::infra::config::AppConfig;
 use crate::infra::db::get_connection_pool;
@@ -88,11 +89,16 @@ pub async fn init_app_state() -> anyhow::Result<AppDependencies> {
         pg_persistence.clone(),
     ));
 
+    let vault_use_case = Arc::new(VaultUseCase::new(
+        pg_persistence.clone(),
+    ));
+
     Ok(AppDependencies {
         state: AppState {
             user_use_case,
             auth_use_case,
             otp_use_case,
+            vault_use_case,
         },
         session_layer,
     })
