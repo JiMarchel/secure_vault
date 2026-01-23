@@ -10,10 +10,12 @@ export const addPassword = z.object({
   usernameOrEmail: z
     .string()
     .max(64, "Username or email must be at most 64 characters long"),
-  password: z
-    .string()
-    .max(64, "Password must be at most 64 characters long"),
+  password: z.string().max(64, "Password must be at most 64 characters long"),
   websiteOrApp: z
     .string()
     .max(64, "Website or app must be at most 64 characters long"),
+  itemType: z.enum(
+    ["Password", "CreditCard", "Note", "Contact"],
+    "Item type is required",
+  ),
 });
