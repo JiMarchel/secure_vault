@@ -49,4 +49,9 @@ impl VaultUseCase {
     pub async fn delete_vault(&self, user_id: Uuid, id: Uuid) -> AppResult<()> {
         self.vault_persistence.delete(user_id, id).await
     }
+
+    #[instrument(name="application.vault.search_by_title", skip(self, title), fields(user_id=%user_id))]
+    pub async fn search_by_title(&self, user_id: Uuid, title: String) -> AppResult<Vec<Vaults>> {
+        self.vault_persistence.search_by_title(user_id, title).await
+    }
 }
