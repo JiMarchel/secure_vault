@@ -34,7 +34,7 @@ impl VaultPersistence for PostgresPersistence {
 
     #[instrument(name = "persistence.vault.find_all_by_user_id", skip(self))]
     async fn find_all_by_user_id(&self, user_id: Uuid) -> AppResult<Vec<Vaults>> {
-        let rows = sqlx::query_as("SELECT * FROM vaults WHERE user_id = $1")
+        let rows = sqlx::query_as("SELECT * FROM vaults WHERE user_id = $1 ORDER BY title ASC")
             .bind(user_id)
             .fetch_all(&self.pool)
             .await?;
