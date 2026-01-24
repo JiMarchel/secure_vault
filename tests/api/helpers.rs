@@ -2,7 +2,7 @@ use std::sync::{Arc, Mutex};
 
 use async_trait::async_trait;
 use backend::{
-    application::{auth::AuthUseCase, otp::OtpUseCase, user::UserUseCase},
+    application::{auth::AuthUseCase, otp::OtpUseCase, user::UserUseCase, vault::VaultUseCase},
     controller::app_state::AppState,
     infra::{
         app::create_app,
@@ -12,12 +12,12 @@ use backend::{
         telemetry::{get_subscriber, init_subscriber},
     },
     model::{app_error::AppResult, user::User},
-    persistence::postgres::PostgresPersistence,
+    persistence::{postgres::PostgresPersistence, redis::RedisPersistence},
     service::{
         email::{EmailPayload, EmailService, EmailTemplate},
         jwt::JwtService,
         otp::OtpService,
-        rate_limiter::RateLimiterService,
+        rate_limiter::LoginRateLimiterService,
     },
 };
 use once_cell::sync::Lazy;
@@ -49,6 +49,7 @@ pub struct TestApp {
     pub address: String,
     pub pool: PgPool,
     pub email_service: Arc<FakeEmailService>,
+    pub jwt_service: Arc<JwtService>,
 }
 
 impl TestApp {
@@ -120,10 +121,13 @@ pub async fn spawn_app() -> TestApp {
         axum::serve(listener, app).await.unwrap();
     });
 
+    let jwt_service = Arc::new(JwtService::new("test_secret"));
+
     TestApp {
         address,
         pool,
         email_service,
+        jwt_service,
     }
 }
 
@@ -172,26 +176,48 @@ async fn build_test_app_state(
 
     let jwt_service = Arc::new(JwtService::new("test_secret"));
 
-    let otp_service = Arc::new(OtpService::new(persistence.clone(), email_service.clone()));
-
     let redis_client = Client::open(redis_url).expect("Failed to connect redis");
     let redis_conn = redis_client
         .get_connection_manager()
         .await
         .expect("Failed to get Redis connection manager");
+    let redis_persistence = Arc::new(RedisPersistence::new(redis_conn));
 
-    let rate_limiter = Arc::new(RateLimiterService::new(redis_conn, email_service.clone()));
+    let login_rate_limiter = Arc::new(LoginRateLimiterService::new(
+        redis_persistence.clone(),
+        redis_persistence.clone(),
+        email_service.clone(),
+    ));
+
+    let otp_service = Arc::new(OtpService::new(
+        redis_persistence.clone(),
+        redis_persistence.clone(),
+        email_service.clone(),
+    ));
+
+    let vault_use_case = Arc::new(VaultUseCase::new(persistence.clone()));
+
     Ok(AppDependencies {
         state: AppState {
-            user_use_case: Arc::new(UserUseCase::new(persistence.clone(), rate_limiter.clone())),
+            user_use_case: Arc::new(UserUseCase::new(
+                persistence.clone(),
+                login_rate_limiter.clone(),
+            )),
             auth_use_case: Arc::new(AuthUseCase::new(
                 persistence.clone(),
                 persistence.clone(),
                 jwt_service.clone(),
                 otp_service.clone(),
-                rate_limiter.clone(),
+                redis_persistence.clone(),
+                login_rate_limiter.clone(),
             )),
-            otp_use_case: Arc::new(OtpUseCase::new(otp_service.clone())),
+            otp_use_case: Arc::new(OtpUseCase::new(
+                redis_persistence.clone(),
+                otp_service.clone(),
+                redis_persistence.clone(),
+                persistence.clone(),
+            )),
+            vault_use_case,
         },
         session_layer,
     })
