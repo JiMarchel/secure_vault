@@ -2,10 +2,11 @@ use std::sync::Arc;
 
 use axum::{
     Json, Router,
-    extract::State,
-    routing::{get, post},
+    extract::{Path, State},
+    routing::{delete, get, post, put},
 };
 use tracing::{info, instrument};
+use uuid::Uuid;
 
 use crate::{
     application::vault::VaultUseCase,
@@ -14,13 +15,15 @@ use crate::{
         app_error::AppResult,
         jwt::Claims,
         response::SuccessResponse,
-        vault::{VaultRequest, Vaults},
+        vault::{UpdateVaultRequest, VaultRequest, Vaults},
     },
 };
 
 pub fn router() -> Router<AppState> {
     Router::new()
         .route("/", post(create_vault))
+        .route("/", put(update_vault))
+        .route("/{id}", delete(delete_vault))
         .route("/all", get(get_all_vaults))
 }
 
@@ -50,5 +53,33 @@ pub async fn get_all_vaults(
     Ok(Json(SuccessResponse {
         data: Some(vaults),
         message: "Successfully get all vaults".to_string(),
+    }))
+}
+
+#[instrument(name = "update_vault", skip(payload, vault_use_case, claims))]
+pub async fn update_vault(
+    claims: Claims,
+    State(vault_use_case): State<Arc<VaultUseCase>>,
+    Json(payload): Json<UpdateVaultRequest>,
+) -> AppResult<Json<SuccessResponse<()>>> {
+    vault_use_case.update_vault(claims.sub, payload).await?;
+
+    Ok(Json(SuccessResponse {
+        data: None,
+        message: "Successfully update vault".to_string(),
+    }))
+}
+
+#[instrument(name = "delete_vault", skip(vault_use_case, claims, id))]
+pub async fn delete_vault(
+    claims: Claims,
+    State(vault_use_case): State<Arc<VaultUseCase>>,
+    Path(id): Path<Uuid>,
+) -> AppResult<Json<SuccessResponse<()>>> {
+    vault_use_case.delete_vault(claims.sub, id).await?;
+
+    Ok(Json(SuccessResponse {
+        data: None,
+        message: "Successfully delete vault".to_string(),
     }))
 }

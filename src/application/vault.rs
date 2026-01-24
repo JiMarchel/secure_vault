@@ -6,7 +6,7 @@ use uuid::Uuid;
 use crate::{
     model::{
         app_error::AppResult,
-        vault::{VaultRequest, Vaults},
+        vault::{UpdateVaultRequest, VaultRequest, Vaults},
     },
     service::vault::VaultPersistence,
 };
@@ -38,5 +38,15 @@ impl VaultUseCase {
     #[instrument(name = "application.vault.get_all_vaults", skip(self), fields(user_id=%user_id))]
     pub async fn get_all_vaults(&self, user_id: Uuid) -> AppResult<Vec<Vaults>> {
         self.vault_persistence.find_all_by_user_id(user_id).await
+    }
+
+    #[instrument(name = "application.vault.update_vault", skip(self, vault), fields(user_id=%user_id))]
+    pub async fn update_vault(&self, user_id: Uuid, vault: UpdateVaultRequest) -> AppResult<()> {
+        self.vault_persistence.update(user_id, vault).await
+    }
+
+    #[instrument(name="application.vault.delete_vault", skip(self) fields(user_id=%user_id, id=%id))]
+    pub async fn delete_vault(&self, user_id: Uuid, id: Uuid) -> AppResult<()> {
+        self.vault_persistence.delete(user_id, id).await
     }
 }
