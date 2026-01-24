@@ -25,6 +25,90 @@ Response Body Success :
 }
 ```
 
+## Login User
+
+Endpoint : POST api/auth/login
+
+Request Body :
+
+```json
+{
+  "email": "string",
+  "authVerifier": "string"
+}
+```
+
+Response Body Success :
+
+```json
+{
+  "data": {
+    "id": "uuid",
+    "username": "string",
+    "email": "string"
+  },
+  "message": "Login success"
+}
+```
+
+## Logout User
+
+Endpoint : DELETE api/auth/logout
+
+Headers :
+
+- Cookie: sv_at=<token>; sv_rt=<token>
+
+Response Body Success :
+
+```json
+{
+  "data": null,
+  "message": "Logged out successfully"
+}
+```
+
+## Refresh Token
+
+Endpoint : POST api/auth/refresh
+
+Headers :
+
+- Cookie: sv_rt=<token>
+
+Response Body Success :
+
+```json
+{
+  "data": {
+    "accessToken": "string",
+    "refreshToken": "string"
+  },
+  "message": "Token refreshed"
+}
+```
+
+## Get Current User
+
+Endpoint : GET api/auth/me
+
+Headers :
+
+- Cookie: sv_at=<token>
+
+Response Body Success :
+
+```json
+{
+  "data": {
+    "id": "uuid",
+    "username": "string",
+    "email": "string"
+  },
+  "message": "User retrieved successfully"
+}
+```
+
 ## Verify OTP
 
 Endpoint : PATCH api/auth/verif/otp
@@ -33,7 +117,7 @@ Request Body :
 
 ```json
 {
-  "otp_code": "string"
+  "otpCode": "string"
 }
 ```
 
@@ -42,7 +126,7 @@ Response Body Success :
 ```json
 {
   "data": null,
-  "message": "email_verified"
+  "message": "Verified Otp success!"
 }
 ```
 
@@ -57,7 +141,8 @@ Request Body :
   "encryptedDek": "string",
   "salt": "string",
   "nonce": "string",
-  "argon2Params": "string"
+  "argon2Params": "string",
+  "authVerifier": "string"
 }
 ```
 
@@ -65,12 +150,49 @@ Response Body Success :
 
 ```json
 {
-  "data": {
-    "access_token": "string",
-    "refresh_token": "string",
-    "token_type": "Bearer",
-    "expires_in": 900
-  },
+  "data": null,
   "message": "User identifier updated"
+}
+```
+
+## Report Failed Attempt
+
+Endpoint : POST api/auth/report-failed
+
+Request Body :
+
+```json
+{
+  "email": "string"
+}
+```
+
+Response Body Success :
+
+```json
+{
+  "data": null,
+  "message": ""
+}
+```
+
+## Unlock Account
+
+Endpoint : POST api/auth/unlock-account
+
+Request Body :
+
+```json
+{
+  "token": "string"
+}
+```
+
+Response Body Success :
+
+```json
+{
+  "data": null,
+  "message": "Account ... unlocked successfully"
 }
 ```
