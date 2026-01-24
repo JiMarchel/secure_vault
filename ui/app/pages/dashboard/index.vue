@@ -44,12 +44,10 @@ if (errorVaults.value) {
 const selectedItem = ref<any>(null)
 const isEditOpen = ref(false)
 
-// Computed untuk menentukan data yang ditampilkan
 const displayedVaults = computed(() => {
   return searchQuery.value.trim() ? searchResults.value : vaults.value || []
 })
 
-// Debounced search function
 const performSearch = useDebounceFn(async () => {
   if (!searchQuery.value.trim()) {
     searchResults.value = []
@@ -68,12 +66,9 @@ const performSearch = useDebounceFn(async () => {
   }
 }, 300)
 
-// Watch search query
 watch(searchQuery, () => {
   performSearch()
 })
-
-// Clear search
 const clearSearch = () => {
   searchQuery.value = ''
   searchResults.value = []
