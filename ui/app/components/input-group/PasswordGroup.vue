@@ -10,12 +10,11 @@ import FormDialog from '../FormDialog.vue';
 import { SidebarMenuSubButton } from '../ui/sidebar';
 import { Separator } from '../ui/separator';
 import { useForm } from '@tanstack/vue-form';
-import { addPassword } from '~/utils/validation/vaults';
+import { addPassword as addPasswordValidation } from '~/utils/validation/vaults';
 import { FieldGroup, FieldLabel, FormInput } from '../ui/field';
 import { Tooltip, TooltipProvider, TooltipTrigger, TooltipContent } from '../ui/tooltip';
-import { encryptVaultItem } from '~/lib/wasm/vault';
 import { errorHelper } from '~/lib/error-helper';
-import type { SuccessResponse } from '~/utils/model/response';
+import DeleteModal from './DeleteModal.vue';
 
 interface Props {
     update?: boolean
@@ -36,7 +35,6 @@ const emit = defineEmits<{
     'update:open': [value: boolean]
 }>()
 
-const { useDek } = useAuth()
 const isGeneratePassword = ref(false)
 const generatePasswordOpt = reactive({
     length: [12],
@@ -132,9 +130,9 @@ watch(isGeneratePassword, (isOpen) => {
     }
 })
 
-const isLoading = ref(false)
 const showPassword = ref(false)
 
+const { password, isLoading, deleteVault } = useVaults()
 
 const addPasswordForm = useForm({
     defaultValues: {
@@ -144,45 +142,24 @@ const addPasswordForm = useForm({
         websiteOrApp: props.update ? (props.websiteOrApp ?? "") : ""
     },
     validators: {
-        onSubmit: addPassword
+        onSubmit: addPasswordValidation
     },
     onSubmit: async ({ value }) => {
         try {
-            isLoading.value = true
-
-            const { $api } = useNuxtApp()
-
-            const credsValue = {
-                usernameOrEmail: value.usernameOrEmail,
-                password: value.password,
-                websiteOrApp: value.websiteOrApp,
+            await password(value, props.update, props.id)
+            if (!props.update) {
+                addPasswordForm.reset()
             }
-            const dek = useDek()
-            const encryptedVaultRes = await encryptVaultItem(dek, JSON.stringify(credsValue))
-            const bodyReq = {
-                title: value.title,
-                itemType: "Password",
-                ...encryptedVaultRes
-            }
-
-            const res = await $api<SuccessResponse<void>>("/vault", {
-                body: bodyReq,
-                method: "POST"
-            })
-
-            toast.success(res.message)
-            addPasswordForm.reset()
-
-            const { refreshVaults } = useVaults()
-            await refreshVaults()
-
         } catch (error) {
             await errorHelper(error)
-        } finally {
-            isLoading.value = false
         }
     },
 })
+
+const deletePassword = async (id: string) => {
+    await deleteVault(id)
+    emit('update:open', false)
+}
 
 </script>
 
@@ -316,6 +293,8 @@ const addPasswordForm = useForm({
                 </FormInput>
             </addPasswordForm.Field>
         </FieldGroup>
+
+        <DeleteModal :id="props.id" :title="props.title" @delete="deletePassword" v-if="props.update" />
 
     </FormDialog>
 
