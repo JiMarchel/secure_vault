@@ -24,6 +24,8 @@ export const addPassword = z.object({
   websiteOrApp,
 });
 
+export type addPasswordType = z.infer<typeof addPassword>
+
 export const updatePassword = z.object({
   id: z.uuid({ version: "v4" }),
   title,
