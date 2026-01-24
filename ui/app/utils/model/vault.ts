@@ -8,6 +8,13 @@ export interface Vaults {
     updatedAt: string;
 }
 
+export interface EncryptedVault {
+    title: string;
+    itemType: string;
+    encryptedData: string;
+    nonce: string;
+}
+
 export interface PasswordDecrypted {
     usernameOrEmail: string;
     password: string;
