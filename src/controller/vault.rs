@@ -2,7 +2,7 @@ use std::sync::Arc;
 
 use axum::{
     Json, Router,
-    extract::{Path, State},
+    extract::{Path, Query, State},
     routing::{delete, get, post, put},
 };
 use tracing::{info, instrument};
@@ -15,16 +15,17 @@ use crate::{
         app_error::AppResult,
         jwt::Claims,
         response::SuccessResponse,
-        vault::{UpdateVaultRequest, VaultRequest, Vaults},
+        vault::{SearchVaultQuery, UpdateVaultRequest, VaultRequest, Vaults},
     },
 };
 
 pub fn router() -> Router<AppState> {
     Router::new()
+        .route("/search", get(search_by_title))
+        .route("/all", get(get_all_vaults))
         .route("/", post(create_vault))
         .route("/", put(update_vault))
         .route("/{id}", delete(delete_vault))
-        .route("/all", get(get_all_vaults))
 }
 
 #[instrument(name = "create_vault", skip(payload, vault_use_case, claims))]
@@ -81,5 +82,21 @@ pub async fn delete_vault(
     Ok(Json(SuccessResponse {
         data: None,
         message: "Successfully delete vault".to_string(),
+    }))
+}
+
+#[instrument(name = "search_by_title", skip(vault_use_case, claims, query), fields(user_id=%claims.sub))]
+pub async fn search_by_title(
+    claims: Claims,
+    State(vault_use_case): State<Arc<VaultUseCase>>,
+    Query(query): Query<SearchVaultQuery>,
+) -> AppResult<Json<SuccessResponse<Vec<Vaults>>>> {
+    let vaults = vault_use_case
+        .search_by_title(claims.sub, query.title)
+        .await?;
+
+    Ok(Json(SuccessResponse {
+        data: Some(vaults),
+        message: "Successfully search vault".to_string(),
     }))
 }
