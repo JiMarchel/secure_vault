@@ -1,9 +1,9 @@
-use chrono::{NaiveDateTime};
+use chrono::NaiveDateTime;
 use serde::{Deserialize, Serialize};
 use sqlx::prelude::FromRow;
 use uuid::Uuid;
 
-#[derive(Serialize, FromRow)]
+#[derive(Serialize, Deserialize, FromRow)]
 #[serde(rename_all = "camelCase")]
 pub struct Vaults {
     pub id: Uuid,
@@ -33,6 +33,11 @@ pub struct VaultRequest {
     pub item_type: ItemType,
     pub encrypted_data: String,
     pub nonce: String,
+}
+
+#[derive(Deserialize)]
+pub struct SearchVaultQuery {
+    pub title: String,
 }
 
 #[derive(Deserialize, Serialize, sqlx::Type)]
