@@ -1,5 +1,8 @@
 use crate::{
-    model::{app_error::AppResult, vault::Vaults},
+    model::{
+        app_error::AppResult,
+        vault::{UpdateVaultRequest, Vaults},
+    },
     persistence::postgres::PostgresPersistence,
     service::vault::VaultPersistence,
 };
@@ -37,5 +40,25 @@ impl VaultPersistence for PostgresPersistence {
             .await?;
 
         Ok(rows)
+    }
+
+    #[instrument(name = "persistence.vault.update", skip(self, vault))]
+    async fn update(&self, user_id: Uuid, vault: UpdateVaultRequest) -> AppResult<()> {
+        sqlx::query(
+            "UPDATE vaults SET title = $1, encrypted_data = $2, nonce = $3, item_type = $4, updated_at = NOW() WHERE id = $5 AND user_id = $6"
+        ).bind(vault.title).bind(vault.encrypted_data).bind(vault.nonce).bind(vault.item_type).bind(vault.id).bind(user_id).execute(&self.pool).await?;
+
+        Ok(())
+    }
+
+    #[instrument(name = "persistence.vault.delete", skip(self, user_id, id))]
+    async fn delete(&self, user_id: Uuid, id: Uuid) -> AppResult<()> {
+        sqlx::query("DELETE FROM vaults WHERE id = $1 AND user_id = $2")
+            .bind(id)
+            .bind(user_id)
+            .execute(&self.pool)
+            .await?;
+
+        Ok(())
     }
 }
