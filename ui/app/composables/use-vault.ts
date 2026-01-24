@@ -1,4 +1,5 @@
 import { toast } from "vue-sonner";
+import { errorHelper } from "~/lib/error-helper";
 import type { VaultItem } from "~/lib/wasm/type";
 import { decryptVaultItem, encryptVaultItem } from "~/lib/wasm/vault";
 import type { SuccessResponse } from "~/utils/model/response";
@@ -222,6 +223,32 @@ export const useVaults = () => {
     isLoading.value = false;
   };
 
+  const searchVaults = async (searchQuery: string) => {
+    if (!searchQuery.trim()) {
+      return [];
+    }
+
+    isLoading.value = true;
+
+    try {
+      const { $api } = useNuxtApp();
+
+      const res = await $api<SuccessResponse<Vaults[]>>("/vault/search", {
+        // method: "GET",
+        query: {
+          title: searchQuery,
+        },
+      });
+
+      return res.data;
+    } catch (error) {
+      await errorHelper(error);
+      return [];
+    } finally {
+      isLoading.value = false;
+    }
+  };
+
   return {
     vaults,
     refreshVaults,
@@ -234,5 +261,7 @@ export const useVaults = () => {
     creditCard,
     contact,
     deleteVault,
+
+    searchVaults,
   };
 };
