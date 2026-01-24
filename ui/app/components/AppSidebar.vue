@@ -1,40 +1,13 @@
 <script setup lang="ts">
 import { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupContent, SidebarGroupLabel, SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem } from '@/components/ui/sidebar'
-import { ChevronUp, CirclePlus, CirclePlusIcon, Contact, CreditCard, FileKey, KeyRound, User2 } from 'lucide-vue-next';
+import { ChevronUp, CirclePlusIcon, User2 } from 'lucide-vue-next';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from './ui/dropdown-menu';
 import { Spinner } from './ui/spinner';
 import { Button } from './ui/button';
 import PasswordGroup from './input-group/PasswordGroup.vue';
-
-const sidebarItems = [
-    {
-        title: "Add Vault",
-        icon: CirclePlus,
-        items: [
-            {
-                title: 'Password',
-                icon: KeyRound,
-                description: 'Add a new password entry to your vault.'
-            },
-            {
-                title: 'Secure Note',
-                url: '#',
-                icon: FileKey,
-                description: 'Save a secure note that only you can read.'
-            },
-            {
-                title: 'Credit Card',
-                icon: CreditCard,
-                description: 'Store your credit card information securely.'
-            },
-            {
-                title: 'Contact Info',
-                icon: Contact,
-                description: 'Keep important contact details safe.'
-            },
-        ]
-    },
-]
+import NoteGroup from './input-group/NoteGroup.vue';
+import CreditCardGroup from './input-group/CreditCardGroup.vue';
+import ContactGroup from './input-group/ContactGroup.vue';
 
 const { user, logout, isLoading } = useAuth()
 
@@ -53,8 +26,11 @@ const { user, logout, isLoading } = useAuth()
                                 <span>Add Vault</span>
                             </SidebarMenuButton>
                             <SidebarMenuSub>
-                                <SidebarMenuSubItem>
+                                <SidebarMenuSubItem class="space-y-3 cursor-default">
                                     <PasswordGroup />
+                                    <NoteGroup />
+                                    <CreditCardGroup />
+                                    <ContactGroup />
                                 </SidebarMenuSubItem>
                             </SidebarMenuSub>
                         </SidebarMenuItem>
