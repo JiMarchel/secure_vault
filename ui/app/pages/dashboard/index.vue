@@ -24,13 +24,12 @@ if (errorVaults.value) {
   errorHelper(errorVaults.value);
 }
 
-// For edit modal
 const selectedItem = ref<updatePasswordType | null>(null)
 const isEditOpen = ref(false)
 
 async function openEditModal(item: Vaults) {
   try {
-    const dek = useDek() // Get DEK when needed, will trigger unlock modal if not available
+    const dek = useDek()
     const decryptedVault = await decryptVaultItem(dek, { encryptedData: item.encryptedData, nonce: item.nonce })
     const vaultData: PasswordDecrypted = JSON.parse(decryptedVault.plaintext)
     selectedItem.value = {
@@ -40,8 +39,6 @@ async function openEditModal(item: Vaults) {
     }
     isEditOpen.value = true
   } catch (error) {
-    // useDek() sets needsUnlock=true, so UnlockVaultModal will show
-    // No need to throw or show error toast
   }
 }
 
@@ -60,7 +57,6 @@ async function openEditModal(item: Vaults) {
       </CardHeader>
     </Card>
 
-    <!-- Edit Modal -->
     <PasswordGroup v-if="selectedItem" :key="selectedItem.id" :update="true" v-model:open="isEditOpen"
       :id="selectedItem.id" :title="selectedItem.title" :websiteOrApp="selectedItem.websiteOrApp"
       :usernameOrEmail="selectedItem.usernameOrEmail" :password="selectedItem.password" />
