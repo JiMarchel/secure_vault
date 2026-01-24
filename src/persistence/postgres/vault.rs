@@ -61,4 +61,22 @@ impl VaultPersistence for PostgresPersistence {
 
         Ok(())
     }
+
+    #[instrument(name = "persistence.vault.search_by_title", skip(self, title), fields(user_id=%user_id))]
+    async fn search_by_title(&self, user_id: Uuid, title: String) -> AppResult<Vec<Vaults>> {
+        let rows = sqlx::query_as(
+            "SELECT * FROM vaults WHERE 
+                user_id = $1
+                AND LOWER(title) LIKE LOWER($2)
+            ORDER BY updated_at DESC
+            LIMIT 20
+            ",
+        )
+        .bind(user_id)
+        .bind(format!("%{}%", title))
+        .fetch_all(&self.pool)
+        .await?;
+
+        Ok(rows)
+    }
 }
