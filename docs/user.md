@@ -20,16 +20,18 @@ Response Body Success :
     "id": "uuid",
     "username": "string",
     "email": "string",
-    "encrypted_dek": "string", // optional
+    "encryptedDek": "string", // optional
     "salt": "string", // optional
-    "argon2_params": "string", // optional
-    "is_email_verified": true,
+    "argon2Params": "string", // optional
+    "isEmailVerified": true,
     "nonce": "string", // optional
-    "created_at": "timestamp"
+    "authVerifier": "string", // optional
+    "createdAt": "timestamp"
   },
   "message": "User fetched successfully"
 }
 ```
+
 ## POST User Identifier
 
 Endpoint : POST api/user/identifier
@@ -47,10 +49,11 @@ Response Body Success :
 ```json
 {
   "data": {
-    "encrypted_dek": "string",
+    "encryptedDek": "string",
     "salt": "string",
-    "argon2_params": "string",
-    "nonce": "string"
+    "argon2Params": "string",
+    "nonce": "string",
+    "authVerifier": "string"
   },
   "message": "User identifier fetched successfully"
 }
