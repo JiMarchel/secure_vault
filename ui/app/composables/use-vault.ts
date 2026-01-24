@@ -3,7 +3,12 @@ import type { VaultItem } from "~/lib/wasm/type";
 import { decryptVaultItem, encryptVaultItem } from "~/lib/wasm/vault";
 import type { SuccessResponse } from "~/utils/model/response";
 import type { EncryptedVault, Vaults } from "~/utils/model/vault";
-import { addPassword, type addPasswordType } from "~/utils/validation/vaults";
+import {
+  type addNoteType,
+  type addPasswordType,
+  type addCreditCardType,
+  type addContactType,
+} from "~/utils/validation/vaults";
 
 export const useVaults = () => {
   const isLoading = ref(false);
@@ -55,7 +60,7 @@ export const useVaults = () => {
     toast.success(res.message);
 
     await refreshVaults();
-  }
+  };
 
   const deleteVault = async (id: string) => {
     isLoading.value = true;
@@ -71,9 +76,9 @@ export const useVaults = () => {
     await refreshVaults();
 
     isLoading.value = false;
-  }
+  };
 
-  const updatePassword = async (body: EncryptedVault) => {
+  const updateVault = async (body: EncryptedVault) => {
     isLoading.value = true;
 
     const { $api } = useNuxtApp();
@@ -86,9 +91,13 @@ export const useVaults = () => {
     toast.success(res.message);
 
     await refreshVaults();
-  }
+  };
 
-  const password = async (value: addPasswordType, update?: boolean, id?: string) => {
+  const password = async (
+    value: addPasswordType,
+    update?: boolean,
+    id?: string,
+  ) => {
     const credsValue = {
       usernameOrEmail: value.usernameOrEmail,
       password: value.password,
@@ -96,7 +105,7 @@ export const useVaults = () => {
     };
 
     const encryptedVaultRes = await encryptVault(JSON.stringify(credsValue));
-    
+
     if (update) {
       const bodyReq = {
         id,
@@ -104,11 +113,108 @@ export const useVaults = () => {
         itemType: "Password",
         ...encryptedVaultRes,
       };
-      await updatePassword(bodyReq);
+      await updateVault(bodyReq);
     } else {
       const bodyReq = {
         title: value.title,
         itemType: "Password",
+        ...encryptedVaultRes,
+      };
+      await add(bodyReq);
+    }
+    isLoading.value = false;
+  };
+
+  const note = async (value: addNoteType, update?: boolean, id?: string) => {
+    const credsValue = {
+      note: value.note,
+    };
+
+    const encryptedVaultRes = await encryptVault(JSON.stringify(credsValue));
+
+    if (update) {
+      const bodyReq = {
+        id,
+        title: value.title,
+        itemType: "Note",
+        ...encryptedVaultRes,
+      };
+      await updateVault(bodyReq);
+    } else {
+      const bodyReq = {
+        title: value.title,
+        itemType: "Note",
+        ...encryptedVaultRes,
+      };
+      await add(bodyReq);
+    }
+    isLoading.value = false;
+  };
+
+  const creditCard = async (
+    value: addCreditCardType,
+    update?: boolean,
+    id?: string,
+  ) => {
+    const credsValue = {
+      cardHolderName: value.cardHolderName,
+      cardNumber: value.cardNumber,
+      cardExpirationDate: value.cardExpirationDate,
+      cardCvv: value.cardCvv,
+      pin: value.pin,
+      zipOrPostalCode: value.zipOrPostalCode,
+    };
+
+    const encryptedVaultRes = await encryptVault(JSON.stringify(credsValue));
+
+    if (update) {
+      const bodyReq = {
+        id,
+        title: value.title,
+        itemType: "CreditCard",
+        ...encryptedVaultRes,
+      };
+      await updateVault(bodyReq);
+    } else {
+      const bodyReq = {
+        title: value.title,
+        itemType: "CreditCard",
+        ...encryptedVaultRes,
+      };
+      await add(bodyReq);
+    }
+    isLoading.value = false;
+  };
+
+  const contact = async (
+    value: addContactType,
+    update?: boolean,
+    id?: string,
+  ) => {
+    const credsValue = {
+      fullName: value.fullName,
+      email: value.email,
+      phoneNumber: value.phoneNumber,
+      address: value.address,
+      city: value.city,
+      state: value.state,
+      country: value.country,
+    };
+
+    const encryptedVaultRes = await encryptVault(JSON.stringify(credsValue));
+
+    if (update) {
+      const bodyReq = {
+        id,
+        title: value.title,
+        itemType: "Contact",
+        ...encryptedVaultRes,
+      };
+      await updateVault(bodyReq);
+    } else {
+      const bodyReq = {
+        title: value.title,
+        itemType: "Contact",
         ...encryptedVaultRes,
       };
       await add(bodyReq);
@@ -124,6 +230,9 @@ export const useVaults = () => {
     isLoading,
 
     password,
+    note,
+    creditCard,
+    contact,
     deleteVault,
   };
 };
