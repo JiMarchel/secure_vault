@@ -40,7 +40,7 @@ const form = useForm({
             })
         } catch (error) {
             await errorHelper(error)
-        }finally{
+        } finally {
             toast.success("Password created successfully")
             await navigateTo("/dashboard")
         }
@@ -67,13 +67,8 @@ function isInvalid(field: any) {
                 <CardContent class="flex flex-col gap-2">
                     <div class="bg-emerald-300 text-black p-2 rounded-md">
                         <p class="text-[0.850rem]">
-                            When creating a strong password, think "passphrase" instead of
-                            "password." A long sequence of four or more random, unrelated
-                            words (like CorrectHorseBatteryStaple) is much harder for
-                            computers to guess yet easier for you to remember. For enhanced
-                            security, mix in uppercase and lowercase letters, numbers, and
-                            symbols ($ ! % &). Never use easily guessable personal
-                            information like your name, birthday, or pet's name.
+                            Use a passphrase of 4+ random words (e.g., 'CorrectHorseBatteryStaple'). Mix uppercase,
+                            lowercase, numbers, and symbols for better security.
                         </p>
                     </div>
                     <FieldGroup>
@@ -84,13 +79,13 @@ function isInvalid(field: any) {
                                         Password
                                     </FieldLabel>
                                     <div class="flex gap-2">
-                                        <Input
-:id="field.name" :name="field.name" :model-value="field.state.value"
+                                        <Input :id="field.name" :name="field.name" :model-value="field.state.value"
                                             :aria-invalid="isInvalid(field)" placeholder="Your password here..."
                                             autocomplete="off" :type="isPasswordViewed ? 'text' : 'password'"
-                                            @blur="field.handleBlur" @input="field.handleChange($event.target.value)"/>
-                                        <Button size="icon" type="button" @click="isPasswordViewed = !isPasswordViewed" variant="outline">
-                                            <Eye v-if="isPasswordViewed"/>
+                                            @blur="field.handleBlur" @input="field.handleChange($event.target.value)" />
+                                        <Button size="icon" type="button" @click="isPasswordViewed = !isPasswordViewed"
+                                            variant="outline">
+                                            <Eye v-if="isPasswordViewed" />
                                             <EyeClosed v-else />
                                         </Button>
                                     </div>
@@ -104,13 +99,11 @@ function isInvalid(field: any) {
                                     <FieldLabel :for="field.name">
                                         Confirm Password
                                     </FieldLabel>
-                                    <Input
-:id="field.name" :name="field.name" :model-value="field.state.value"
+                                    <Input :id="field.name" :name="field.name" :model-value="field.state.value"
                                         :aria-invalid="isInvalid(field)" placeholder="Confirm your password here..."
-                                        :type="isPasswordViewed ? 'text' : 'password'"
-                                        autocomplete="off" @blur="field.handleBlur"
-                                        @input="field.handleChange($event.target.value)" />
-                                        
+                                        :type="isPasswordViewed ? 'text' : 'password'" autocomplete="off"
+                                        @blur="field.handleBlur" @input="field.handleChange($event.target.value)" />
+
                                     <FieldError v-if="isInvalid(field)" :errors="field.state.meta.errors" />
                                 </Field>
                             </template>
