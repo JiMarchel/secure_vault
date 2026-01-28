@@ -1,12 +1,12 @@
 # Secure Vault
 
-**Next-Generation Password Manager with Zero-Knowledge Architecture**
+**Password Manager with Zero-Knowledge Architecture**
 
 ![Secure Vault Landing Page](docs/assets/landing_page.png)
 
 ## 🛡️ Project Overview
 
-**Secure Vault** is a high-security password manager designed with a **Zero-Knowledge Architecture**. This means the server strictly manages encrypted data and **never** has access to the user's master password or the unencrypted content of their vault. All encryption and decryption operations occur client-side using WebAssembly (WASM) for maximum security and performance.
+**Secure Vault** is a password manager designed with a **Zero-Knowledge Architecture**. This means the server strictly manages encrypted data and **never** has access to the user's master password or the unencrypted content of their vault. All encryption and decryption operations occur client-side using WebAssembly (WASM) for maximum security and performance.
 
 ### 🔑 Key Features
 
