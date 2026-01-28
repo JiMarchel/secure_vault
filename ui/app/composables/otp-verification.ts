@@ -1,124 +1,127 @@
-import { ref, onMounted, onUnmounted, computed } from 'vue'
-import { toast } from 'vue-sonner'
-import { errorHelper } from '~/lib/error-helper'
-import type { OtpStatus, ResendOtpResponse } from '~/utils/model/otp'
-import type { SuccessResponse } from '~/utils/model/response'
+import { ref, onMounted, onUnmounted, computed } from "vue";
+import { useNow } from "@vueuse/core";
+import { toast } from "vue-sonner";
+import { errorHelper } from "~/lib/error-helper";
+import type { OtpStatus, ResendOtpResponse } from "~/utils/model/otp";
+import type { SuccessResponse } from "~/utils/model/response";
 
 export function useOtpVerification() {
-  const { $api } = useNuxtApp()
+  const { $api } = useNuxtApp();
 
-  const otpStatus = ref<OtpStatus | null>(null)
-  const isLoading = ref(false)
-  const isResending = ref(false)
-  const resendCooldown = ref(0)
-  
-  let countdownInterval: NodeJS.Timeout | null = null
+  const otpStatus = ref<OtpStatus | null>(null);
+  const isLoading = ref(false);
+  const isResending = ref(false);
+  const resendCooldown = ref(0);
+
+  let countdownInterval: NodeJS.Timeout | null = null;
 
   const canResend = computed(() => {
-    return otpStatus.value?.canResend && resendCooldown.value === 0
-  })
+    return otpStatus.value?.canResend && resendCooldown.value === 0;
+  });
 
   const otpExpired = computed(() => {
-    if (!otpStatus.value?.expiresAt) return false
-    return new Date(otpStatus.value.expiresAt) < new Date()
-  })
+    if (!otpStatus.value?.expiresAt) return false;
+    return new Date(otpStatus.value.expiresAt) < new Date();
+  });
+
+  const now = useNow({ interval: 1000 });
 
   const timeUntilExpiry = computed(() => {
-    if (!otpStatus.value?.expiresAt) return 0
-    const expiryTime = new Date(otpStatus.value.expiresAt).getTime()
-    const now = new Date().getTime()
-    return Math.max(0, Math.floor((expiryTime - now) / 1000))
-  })
+    if (!otpStatus.value?.expiresAt) return 0;
+    const expiryTime = new Date(otpStatus.value.expiresAt).getTime();
+    const currentTime = now.value.getTime();
+    return Math.max(0, Math.floor((expiryTime - currentTime) / 1000));
+  });
 
   function startCountdown(seconds: number) {
-    resendCooldown.value = seconds
+    resendCooldown.value = seconds;
 
     if (countdownInterval) {
-      clearInterval(countdownInterval)
+      clearInterval(countdownInterval);
     }
 
     countdownInterval = setInterval(() => {
-      resendCooldown.value--
+      resendCooldown.value--;
       if (resendCooldown.value <= 0) {
-        clearInterval(countdownInterval!)
-        countdownInterval = null
-        fetchOtpStatus()
+        clearInterval(countdownInterval!);
+        countdownInterval = null;
+        fetchOtpStatus();
       }
-    }, 1000)
+    }, 1000);
   }
 
   async function fetchOtpStatus() {
-    isLoading.value = true
+    isLoading.value = true;
     try {
       const response = await $api<SuccessResponse<OtpStatus>>(
-        '/session/otp/status'
-      )
-      
-      otpStatus.value = response.data!
+        "/session/otp/status",
+      );
+
+      otpStatus.value = response.data!;
 
       if (response.data?.resendAfter && response.data.resendAfter > 0) {
-        startCountdown(response.data.resendAfter)
+        startCountdown(response.data.resendAfter);
       }
     } catch (error) {
-      await errorHelper(error)
-      console.error('Failed to fetch OTP status:', error)
+      await errorHelper(error);
+      console.error("Failed to fetch OTP status:", error);
     } finally {
-      isLoading.value = false
+      isLoading.value = false;
     }
   }
 
   async function resendOtp() {
-    if (!canResend.value || isResending.value) return
+    if (!canResend.value || isResending.value) return;
 
-    isResending.value = true
+    isResending.value = true;
     try {
       const response = await $api<SuccessResponse<ResendOtpResponse>>(
-        '/session/otp/resend',
+        "/session/otp/resend",
         {
-          method: 'PATCH',
-        }
-      )
+          method: "PATCH",
+        },
+      );
 
-      toast.success('OTP has been resent to your email!')
+      toast.success("OTP has been resent to your email!");
 
       if (response.data?.cooldownSeconds) {
-        startCountdown(response.data.cooldownSeconds)
+        startCountdown(response.data.cooldownSeconds);
       }
-      await fetchOtpStatus()
+      await fetchOtpStatus();
     } catch (error: any) {
-      await errorHelper(error)
+      await errorHelper(error);
       if (error?.data?.details?.retry_after) {
-        startCountdown(error.data.details.retry_after)
+        startCountdown(error.data.details.retry_after);
       }
     } finally {
-      isResending.value = false
+      isResending.value = false;
     }
   }
 
   async function verifyOtp(code: string) {
     try {
-      await $api<SuccessResponse<void>>('/session/otp/verify', {
-        method: 'POST',
+      await $api<SuccessResponse<void>>("/session/otp/verify", {
+        method: "POST",
         body: { otpCode: code },
-      })
+      });
 
-      toast.success('OTP verified successfully!')
-      return true
+      toast.success("OTP verified successfully!");
+      return true;
     } catch (error) {
-      await errorHelper(error)
-      return false
+      await errorHelper(error);
+      return false;
     }
   }
 
   onMounted(() => {
-    fetchOtpStatus()
-  })
+    fetchOtpStatus();
+  });
 
   onUnmounted(() => {
     if (countdownInterval) {
-      clearInterval(countdownInterval)
+      clearInterval(countdownInterval);
     }
-  })
+  });
 
   return {
     otpStatus,
@@ -131,5 +134,5 @@ export function useOtpVerification() {
     fetchOtpStatus,
     resendOtp,
     verifyOtp,
-  }
+  };
 }
