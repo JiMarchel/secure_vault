@@ -21,7 +21,7 @@ const techStack = [
       <HomeNavbar />
     </nav>
 
-    <section class="w-full py-16 min-h-screen md:py-28 lg:py-36 relative overflow-hidden flex flex-col justify-center">
+    <section class="w-full py-16 min-h-screen md:py-28 lg:py-22 relative overflow-hidden flex flex-col justify-center">
       <div class="absolute inset-0 -z-10">
         <div class="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
         <div class="absolute bottom-1/4 right-1/4 w-80 h-80 bg-primary/5 rounded-full blur-3xl"></div>

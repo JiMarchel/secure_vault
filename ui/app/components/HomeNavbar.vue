@@ -115,12 +115,6 @@ function isInvalid(field: any) {
                             </template>
                         </loginForm.Field>
                     </FieldGroup>
-
-                    <div class="flex items-center justify-between">
-                        <NuxtLink href="#" class="text-sm text-primary hover:text-primary/70">
-                            Forgot password?
-                        </NuxtLink>
-                    </div>
                 </FormDialog>
 
                 <FormDialog title="Create your account" description="Start securing your passwords today"
